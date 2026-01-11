@@ -78,10 +78,26 @@
       background: none;
       border: none;
       color: var(--uxp-color-text-primary, #323232);
-      font-size: var(--ui-font-size);
+      font-size: var(--ui-font-size) !important;
+      font-family: inherit;
       transition: all 0.15s;
       border-radius: 4px;
       font-weight: 400;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+    }
+
+    .tab-icon {
+      display: inline-block;
+      margin-right: 6px;
+      line-height: 1;
+    }
+
+    .tab-label {
+      display: inline-block;
+      line-height: 1.1;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -250,6 +266,13 @@
       font-family: inherit;
     }
 
+    /* UXP sometimes overrides button fonts; force action buttons */
+    .btn-primary,
+    .btn-secondary {
+      font-size: var(--ui-font-size) !important;
+      font-family: inherit;
+    }
+
     .btn-primary {
       background: var(--uxp-color-accent, #2680eb);
       color: white;
@@ -287,7 +310,7 @@
 
     .btn-small {
       padding: 5px 10px;
-      font-size: calc(var(--ui-font-size) - 1px);
+      font-size: calc(var(--ui-font-size) - 1px) !important;
     }
 
     .button-group {
@@ -368,7 +391,7 @@
     }
 
     .template-size {
-      font-size: 10px;
+      font-size: calc(var(--ui-font-size) - 1px);
       opacity: 0.8;
     }
 
@@ -427,7 +450,7 @@
     }
 
     .format-constraints {
-      font-size: 10px;
+      font-size: calc(var(--ui-font-size) - 1px);
       opacity: 0.85;
       white-space: nowrap;
       flex: 0 0 auto;
@@ -435,7 +458,7 @@
 
     .format-delete {
       padding: 6px 10px;
-      font-size: 14px;
+      font-size: calc(var(--ui-font-size) + 2px);
       line-height: 1;
       background: var(--uxp-color-surface-gray-300, #d3d3d3);
       color: var(--uxp-color-text-primary, #323232);
@@ -510,7 +533,7 @@
       background: var(--uxp-color-surface-gray-200, #e8e8e8);
       border: 1px solid var(--uxp-color-divider, #d3d3d3);
       border-radius: 4px;
-      font-size: 16px;
+      font-size: calc(var(--ui-font-size) + 5px);
       transition: all 0.15s;
     }
 
@@ -545,7 +568,7 @@
       border-top: 1px solid var(--uxp-color-divider, #d3d3d3);
       background: var(--uxp-color-surface-secondary, #fafafa);
       font-family: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
-      font-size: 10px;
+      font-size: calc(var(--ui-font-size) - 1px);
       display: block;
       width: 100%;
       box-sizing: border-box;
@@ -593,11 +616,26 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" data-tab="resize">Größenzuweisung</button>
-      <button class="tab" data-tab="distribute">Verteilen</button>
-      <button class="tab" data-tab="distribute-scale">Verteilen & Skalieren</button>
-      <button class="tab" data-tab="tools">Tools</button>
-      <button class="tab" data-tab="settings">Einstellungen</button>
+      <button class="tab active" data-tab="resize" aria-label="Größe">
+        <span class="tab-icon" aria-hidden="true">📐</span>
+        <span class="tab-label">Größe</span>
+      </button>
+      <button class="tab" data-tab="distribute" aria-label="Verteilen">
+        <span class="tab-icon" aria-hidden="true">↔</span>
+        <span class="tab-label">Verteilen</span>
+      </button>
+      <button class="tab" data-tab="distribute-scale" aria-label="Layout">
+        <span class="tab-icon" aria-hidden="true">⧉</span>
+        <span class="tab-label">Layout</span>
+      </button>
+      <button class="tab" data-tab="tools" aria-label="Tools">
+        <span class="tab-icon" aria-hidden="true">🛠</span>
+        <span class="tab-label">Tools</span>
+      </button>
+      <button class="tab" data-tab="settings" aria-label="Einstellungen">
+        <span class="tab-icon" aria-hidden="true">⚙</span>
+        <span class="tab-label">Einst.</span>
+      </button>
     </div>
 
     <!-- Tab 1: Resize -->
@@ -794,6 +832,17 @@
             </div>
           </div>
         </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <div class="checkbox-item">
+              <input type="checkbox" id="scale-keep-aspect" checked>
+              <label for="scale-keep-aspect" id="label-scale-keep-aspect">Seitenverhältnis beibehalten</label>
+            </div>
+          </div>
+          <div class="helper-text" id="help-scale-keep-aspect">Skaliert gleichmäßig (uniform), damit das ursprüngliche
+            Seitenverhältnis der Rahmen erhalten bleibt.</div>
+        </div>
       </div>
       <!-- Multi Format Mode (neu) -->
       <div id="multi-format-settings" hidden>
@@ -850,10 +899,12 @@
           <div class="checkbox-group">
             <div class="checkbox-item">
               <input type="checkbox" id="scale-formats-to-fit">
-              <label for="scale-formats-to-fit" id="label-scale-formats-to-fit">Formate automatisch an Seite anpassen</label>
+              <label for="scale-formats-to-fit" id="label-scale-formats-to-fit">Formate automatisch an Seite
+                anpassen</label>
             </div>
           </div>
-          <div class="helper-text" id="help-scale-formats-to-fit">Skaliert alle Multi-Formate proportional herunter, damit das größte Format in den Bereich passt.</div>
+          <div class="helper-text" id="help-scale-formats-to-fit">Skaliert alle Multi-Formate proportional herunter,
+            damit das größte Format in den Bereich passt.</div>
         </div>
 
         <div class="form-group">
@@ -880,7 +931,8 @@
               <label for="masonry-fill-page" id="label-masonry-fill-page">Seite auffüllen</label>
             </div>
           </div>
-          <div class="helper-text" id="help-masonry">Füllt spaltenweise von oben nach unten. Optional werden zusätzliche leere Rahmen erstellt, bis kein Format mehr passt.</div>
+          <div class="helper-text" id="help-masonry">Füllt spaltenweise von oben nach unten. Optional werden zusätzliche
+            leere Rahmen erstellt, bis kein Format mehr passt.</div>
         </div>
       </div>
       <div class="divider"></div>
@@ -990,6 +1042,8 @@
       </div>
       <div class="helper-text" style="margin-top:12px;">Einstellungen wirken direkt auf UI-Abstände und Schriftgröße.
       </div>
+
+      <div id="ui-build-stamp" class="helper-text" style="margin-top:10px;">build</div>
     </div>
 
     <!-- Log Output -->
@@ -997,7 +1051,6 @@
       <div class="log-actions">
         <button class="btn-secondary btn-small" id="copy-log-btn">Log kopieren</button>
         <button class="btn-secondary btn-small" id="clear-log-btn">Log löschen</button>
-        <div id="ui-build-stamp" class="helper-text" style="margin-left:auto;">build 2026-01-11-UI-INIT-2</div>
       </div>
       <div id="log-output" class="log-panel" role="log" aria-live="polite" tabindex="0">Log bereit…</div>
     </div>

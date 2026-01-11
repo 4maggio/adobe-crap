@@ -5,8 +5,7 @@ const { FitOptions } = require("indesign");
 const fs = require("uxp").storage.localFileSystem;
 
 // Bump this when debugging UI caching/reload issues
-const BUILD_ID = "2026-01-11-GENERATOR-5";
-
+const BUILD_GIT_SHA = "f32c9fa";
 // In UXP, DOMContentLoaded can be unreliable depending on panel lifecycle.
 // We initialize from both DOMContentLoaded and entrypoints.show(), guarded to run once.
 let panelInitialized = false;
@@ -102,6 +101,31 @@ let logAutoScrollEnabled = true;
 
 // Storage Helper für File System API
 let pluginDataFolder = null;
+let pluginFolder = null;
+
+async function getPluginFolder() {
+  if (!pluginFolder) {
+    pluginFolder = await fs.getPluginFolder();
+  }
+  return pluginFolder;
+}
+
+let cachedManifestVersion = null;
+async function getManifestVersion() {
+  if (cachedManifestVersion) return cachedManifestVersion;
+  try {
+    const folder = await getPluginFolder();
+    const entry = await folder.getEntry('manifest.json');
+    const text = await entry.read();
+    const parsed = JSON.parse(text);
+    const version = parsed && typeof parsed.version === 'string' ? parsed.version.trim() : '';
+    cachedManifestVersion = version || null;
+    return cachedManifestVersion;
+  } catch (_) {
+    cachedManifestVersion = null;
+    return null;
+  }
+}
 
 async function getPluginDataFolder() {
   if (!pluginDataFolder) {
@@ -125,6 +149,7 @@ const DEFAULT_SETTINGS = {
   formats: [],
   allowEmptyFrames: false,
   scaleFormatsToFit: false,
+  scaleKeepAspect: true,
   multiLayoutStyle: "grid",
   masonryCols: 3,
   masonrySeed: "",
@@ -142,11 +167,11 @@ let settingsReady = false;
 
 const I18N = {
   de: {
-    "tabs.resize": "Größenzuweisung",
+    "tabs.resize": "Größe",
     "tabs.distribute": "Verteilen",
-    "tabs.distributeScale": "Verteilen & Skalieren",
+    "tabs.distributeScale": "Layout",
     "tabs.tools": "Tools",
-    "tabs.settings": "Einstellungen",
+    "tabs.settings": "Einst.",
 
     "title.templates": "Templates",
     "title.formatDefinition": "Formatdefinition",
@@ -201,6 +226,8 @@ const I18N = {
     "help.allowEmptyFrames": "Erstellt zusätzliche leere Rahmen, wenn die Summe der Min-Werte größer ist als die Auswahl.",
     "label.scaleFormatsToFit": "Formate automatisch an Seite anpassen",
     "help.scaleFormatsToFit": "Skaliert alle Multi-Formate proportional herunter, damit das größte Format in den Bereich passt.",
+    "label.scaleKeepAspect": "Seitenverhältnis beibehalten",
+    "help.scaleKeepAspect": "Skaliert gleichmäßig (uniform), damit das ursprüngliche Seitenverhältnis der Rahmen erhalten bleibt.",
     "label.multiLayoutStyle": "Layout-Stil",
     "ui.layout.grid": "Raster",
     "ui.layout.masonry": "Masonry (Spalten)",
@@ -248,11 +275,11 @@ const I18N = {
     "msg.unknownError": "Unbekannter Fehler"
   },
   en: {
-    "tabs.resize": "Resize",
+    "tabs.resize": "Size",
     "tabs.distribute": "Distribute",
-    "tabs.distributeScale": "Distribute & Scale",
+    "tabs.distributeScale": "Layout",
     "tabs.tools": "Tools",
-    "tabs.settings": "Settings",
+    "tabs.settings": "Prefs",
 
     "title.templates": "Templates",
     "title.formatDefinition": "Format definition",
@@ -307,6 +334,8 @@ const I18N = {
     "help.allowEmptyFrames": "Creates additional empty frames if the sum of Min values exceeds the selection.",
     "label.scaleFormatsToFit": "Auto scale formats to fit",
     "help.scaleFormatsToFit": "Scales down all multi formats proportionally so the largest format fits in the area.",
+    "label.scaleKeepAspect": "Preserve aspect ratio",
+    "help.scaleKeepAspect": "Uniformly scales frames so their original aspect ratio is preserved.",
     "label.multiLayoutStyle": "Layout style",
     "ui.layout.grid": "Grid",
     "ui.layout.masonry": "Masonry (columns)",
@@ -433,7 +462,14 @@ function applyLanguageToUI() {
   };
   document.querySelectorAll(".tab[data-tab]").forEach((btn) => {
     const key = tabMap[btn.getAttribute("data-tab")];
-    if (key) btn.textContent = t(key);
+    if (!key) return;
+    const label = btn.querySelector('.tab-label');
+    if (label) {
+      label.textContent = t(key);
+    } else {
+      // Back-compat if markup changes
+      btn.textContent = t(key);
+    }
   });
 
   // Headings / helper texts
@@ -444,6 +480,8 @@ function applyLanguageToUI() {
   setTextById("title-templates", "title.templates");
   setTextById("title-format-definition", "title.formatDefinition");
   setTextById("title-size-constraints", "title.sizeConstraints");
+  setTextById("label-scale-keep-aspect", "label.scaleKeepAspect");
+  setTextById("help-scale-keep-aspect", "help.scaleKeepAspect");
   setTextById("title-multi-formats", "title.multiFormats");
   setTextById("label-formats-define", "label.formatsDefine");
   setTextById("label-format-add", "label.formatAdd");
@@ -1589,6 +1627,9 @@ async function applyDistributeScale() {
     const scaleFrame = document.getElementById('scale-frame').checked;
     const scaleContent = document.getElementById('scale-content').checked;
 
+    const keepAspectEl = document.getElementById('scale-keep-aspect');
+    const keepAspect = keepAspectEl ? !!keepAspectEl.checked : !!pluginSettings.scaleKeepAspect;
+
     if (!scaleFrame && !scaleContent) {
       showMessage(t('msg.chooseScaleTarget'), true);
       return;
@@ -1983,8 +2024,21 @@ async function applyDistributeScale() {
             itemHeight = formatAssignments[index].height;
             appendLog(`  -> Format: ${itemWidth}x${itemHeight}mm`);
           } else {
-            itemWidth = defaultItemWidth;
-            itemHeight = defaultItemHeight;
+            if (formatMode === 'single' && keepAspect) {
+              const ow = Number(item && item.width) || 0;
+              const oh = Number(item && item.height) || 0;
+              if (ow > 0 && oh > 0) {
+                const s = Math.min(defaultItemWidth / ow, defaultItemHeight / oh);
+                itemWidth = ow * s;
+                itemHeight = oh * s;
+              } else {
+                itemWidth = defaultItemWidth;
+                itemHeight = defaultItemHeight;
+              }
+            } else {
+              itemWidth = defaultItemWidth;
+              itemHeight = defaultItemHeight;
+            }
           }
 
           // Berechne neue Position (cell-based, to avoid overlaps with variable format sizes)
@@ -2055,7 +2109,22 @@ function initPanel() {
 
   // Visual build stamp (helps detect caching even if log stays empty)
   const buildStamp = document.getElementById('ui-build-stamp');
-  if (buildStamp) buildStamp.textContent = `build ${BUILD_ID}`;
+  if (buildStamp) {
+    const sha = (BUILD_GIT_SHA && BUILD_GIT_SHA !== '__GIT_SHA__') ? BUILD_GIT_SHA : '';
+    const fallback = 'dev';
+    buildStamp.textContent = sha || fallback;
+    buildStamp.title = sha ? `git ${sha}` : fallback;
+
+    Promise.resolve()
+      .then(() => getManifestVersion())
+      .then((version) => {
+        const v = version ? `v${version}` : '';
+        buildStamp.textContent = v && sha ? `${v} (${sha})` : (v || sha || fallback);
+      })
+      .catch(() => {
+        // keep fallback
+      });
+  }
 
   // Clean up any accidental "NaN" strings in number inputs (UXP can persist odd states)
   const sanitizeNumberInput = (id) => {
@@ -2235,6 +2304,7 @@ function initPanel() {
   const togglePopups = document.getElementById('setting-popups-enabled');
   const selectLanguage = document.getElementById('setting-language');
   const toggleAllowEmptyFrames = document.getElementById('allow-empty-frames');
+  const toggleKeepAspect = document.getElementById('scale-keep-aspect');
   const toggleScaleFormatsToFit = document.getElementById('scale-formats-to-fit');
   const selectMultiLayoutStyle = document.getElementById('multi-layout-style');
   const masonrySettingsEl = document.getElementById('masonry-settings');
@@ -2309,6 +2379,29 @@ function initPanel() {
   const inputPad = document.getElementById('setting-pad');
   const inputDivider = document.getElementById('setting-divider');
 
+  const applyUIFontSizeWorkarounds = (fontPx) => {
+    const base = `${fontPx}px`;
+    const small = `${Math.max(1, fontPx - 1)}px`;
+
+    // Tabs (top menu)
+    document.querySelectorAll('.tabs > button.tab').forEach(btn => {
+      btn.style.fontSize = base;
+      btn.style.fontFamily = 'inherit';
+    });
+
+    // Primary action buttons ("Anwenden", "Verteilen", ...)
+    document.querySelectorAll('button.btn-primary').forEach(btn => {
+      btn.style.fontSize = base;
+      btn.style.fontFamily = 'inherit';
+    });
+
+    // Log action buttons (often visible while tuning font-size)
+    document.querySelectorAll('.log-actions > button').forEach(btn => {
+      btn.style.fontSize = btn.classList.contains('btn-small') ? small : base;
+      btn.style.fontFamily = 'inherit';
+    });
+  };
+
   const applySettings = () => {
     const font = parseFloat(inputFont.value) || 11;
     const gap = parseFloat(inputGap.value) || 8;
@@ -2327,6 +2420,8 @@ function initPanel() {
     root.setProperty('--ui-gap', `${gap}px`);
     root.setProperty('--ui-padding', `${pad}px`);
     root.setProperty('--ui-divider-margin', `${divider}px`);
+
+    applyUIFontSizeWorkarounds(font);
 
     if (settingsReady) queueSaveSettings();
   };
@@ -2354,6 +2449,14 @@ function initPanel() {
     toggleAllowEmptyFrames.addEventListener('change', () => {
       pluginSettings.allowEmptyFrames = !!toggleAllowEmptyFrames.checked;
       appendLog(`UI: allowEmptyFrames=${!!pluginSettings.allowEmptyFrames}`);
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (toggleKeepAspect) {
+    toggleKeepAspect.addEventListener('change', () => {
+      pluginSettings.scaleKeepAspect = !!toggleKeepAspect.checked;
+      appendLog(`UI: scaleKeepAspect=${!!pluginSettings.scaleKeepAspect}`);
       if (settingsReady) queueSaveSettings();
     });
   }
@@ -2661,6 +2764,7 @@ function initPanel() {
     if (toggleLog) toggleLog.checked = !!pluginSettings.logEnabled;
     if (togglePopups) togglePopups.checked = !!pluginSettings.popupsEnabled;
     if (toggleAllowEmptyFrames) toggleAllowEmptyFrames.checked = !!pluginSettings.allowEmptyFrames;
+    if (toggleKeepAspect) toggleKeepAspect.checked = (pluginSettings.scaleKeepAspect !== false);
     if (toggleScaleFormatsToFit) toggleScaleFormatsToFit.checked = !!pluginSettings.scaleFormatsToFit;
     if (selectMultiLayoutStyle) selectMultiLayoutStyle.value = pluginSettings.multiLayoutStyle || 'grid';
     if (inputMasonryCols) inputMasonryCols.value = String(pluginSettings.masonryCols ?? 3);
@@ -2687,7 +2791,8 @@ function initPanel() {
     settingsReady = true;
   })();
 
-  appendLog(`${t('msg.panelLoaded')} (build ${BUILD_ID})`);
+  const sha = (BUILD_GIT_SHA && BUILD_GIT_SHA !== '__GIT_SHA__') ? BUILD_GIT_SHA : 'dev';
+  appendLog(`${t('msg.panelLoaded')} (${sha})`);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
