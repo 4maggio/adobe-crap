@@ -15,5 +15,14 @@ Monorepo for custom Adobe plugins.
 		- InDesign plugin for frame sizing, distribution, and layout generation
 		- Docs: [DE](InDesign/InDesign_PP/README_DE.md) | [EN](InDesign/InDesign_PP/README_EN.md)
 
+## Installation
+
+- End-user + developer notes: see [ISTALLATION_README.md](ISTALLATION_README.md)
+
+## License
+
+- Repository: AGPL-3.0-or-later (see [LICENSE](LICENSE))
+- Plugin subfolders may include additional license files for convenience; the repo root license is authoritative.
+
 ## Notes
 :) 
