@@ -2,6 +2,8 @@
 
 Monorepo for custom Adobe plugins.
 
+Default workflow: develop on `dev` via PRs, merge to `main` for releases.
+
 ## Structure
 
 - One folder per Adobe product (e.g. `InDesign/`)
