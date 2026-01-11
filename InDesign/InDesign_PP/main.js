@@ -219,6 +219,7 @@ const I18N = {
     "tooltip.formatMin": "Mindestanzahl für dieses Format. 0 = keine Mindestanzahl.",
     "tooltip.formatMax": "Maximale Anzahl für dieses Format. 0 = unbegrenzt.",
     "tooltip.formatsList": "Klicke ein Format zum Bearbeiten an. × löscht den Eintrag.",
+    "tooltip.livePreview": "Wendet Änderungen sofort an (ohne Dialoge).",
 
     "label.formatsDefine": "Formate definieren",
     "label.formatAdd": "Neues Format hinzufügen",
@@ -266,6 +267,7 @@ const I18N = {
     "msg.errorWithMessage": "Fehler: {message}",
     "ui.noTemplates": "Keine Templates gespeichert",
     "ui.noFormats": "Keine Formate definiert",
+    "ui.livePreview": "Live-Vorschau",
     "msg.minMaxNonNegative": "Min/Max müssen >= 0 sein",
     "msg.minNotGreaterMax": "Min darf nicht größer als Max sein",
     "msg.multiFormatError": "Multi-Format Fehler: {message}",
@@ -327,6 +329,7 @@ const I18N = {
     "tooltip.formatMin": "Minimum required count for this format. 0 = no minimum.",
     "tooltip.formatMax": "Maximum allowed count for this format. 0 = unlimited.",
     "tooltip.formatsList": "Click a format to edit. × deletes the entry.",
+    "tooltip.livePreview": "Applies changes immediately (no dialogs).",
 
     "label.formatsDefine": "Define formats",
     "label.formatAdd": "Add new format",
@@ -374,6 +377,7 @@ const I18N = {
     "msg.errorWithMessage": "Error: {message}",
     "ui.noTemplates": "No templates saved",
     "ui.noFormats": "No formats defined",
+    "ui.livePreview": "Live Preview",
     "msg.minMaxNonNegative": "Min/Max must be >= 0",
     "msg.minNotGreaterMax": "Min must not be greater than Max",
     "msg.multiFormatError": "Multi-format error: {message}",
@@ -510,6 +514,12 @@ function applyLanguageToUI() {
   setTextById("help-center-content", "help.centerContent");
   setTextById("title-fit-to-frame", "title.fitToFrame");
 
+  // Live preview labels
+  setTextById("label-preview-resize", "ui.livePreview");
+  setTextById("label-preview-distribute", "ui.livePreview");
+  setTextById("label-preview-distribute-scale", "ui.livePreview");
+  setTextById("label-preview-fit-to-frame", "ui.livePreview");
+
   // Settings controls
   const lblLog = document.querySelector('label[for="setting-log-enabled"]');
   if (lblLog) lblLog.textContent = t("settings.showLog");
@@ -575,7 +585,11 @@ function applyTooltips() {
     "format-width": "tooltip.formatWidth",
     "format-height": "tooltip.formatHeight",
     "format-min": "tooltip.formatMin",
-    "format-max": "tooltip.formatMax"
+    "format-max": "tooltip.formatMax",
+    "preview-resize": "tooltip.livePreview",
+    "preview-distribute": "tooltip.livePreview",
+    "preview-distribute-scale": "tooltip.livePreview",
+    "preview-fit-to-frame": "tooltip.livePreview"
   };
   Object.keys(overrides).forEach((id) => {
     const el = document.getElementById(id);
@@ -728,6 +742,11 @@ function scaleGraphicsInObject(obj, targetWidth, targetHeight) {
 async function showMessage(message, isError = false) {
   try {
     const msg = (typeof message === "string" ? message.trim() : "") || (isError ? t("popup.defaultError") : t("popup.defaultInfo"));
+
+    // Live preview runs should not spam dialogs.
+    if (typeof window !== 'undefined' && window.__ppSuppressPopups) {
+      return;
+    }
 
     // If popups are disabled, log instead.
     if (!pluginSettings.popupsEnabled) {
@@ -1336,6 +1355,9 @@ async function renderTemplates() {
       const heightInput = document.getElementById('resize-height');
       if (widthInput) widthInput.value = t.width.toString();
       if (heightInput) heightInput.value = t.height.toString();
+
+      // If live preview is enabled for resize, apply immediately.
+      try { requestLivePreview('resize'); } catch (_) { }
     });
 
     listEl.appendChild(itemDiv);
@@ -2087,6 +2109,410 @@ async function applyDistributeScale() {
 // Event Listeners / Panel Init
 // ============================
 
+function debounce(fn, waitMs) {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      fn(...args);
+    }, waitMs);
+  };
+}
+
+function supportsUndo() {
+  const app = getInDesignApp();
+  if (!app) return false;
+  try {
+    return typeof app.undo === 'function';
+  } catch (_) {
+    return false;
+  }
+}
+
+function tryUndoOnce() {
+  const app = getInDesignApp();
+  if (!app) return false;
+  try {
+    if (typeof app.undo !== 'function') return false;
+    app.undo();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function hasActiveSelection() {
+  const doc = getActiveDocumentSafe();
+  try {
+    return !!(doc && doc.selection && doc.selection.length > 0);
+  } catch (_) {
+    return false;
+  }
+}
+
+function canLivePreviewResize() {
+  if (!hasActiveSelection()) return false;
+  const scaleFrame = !!(document.getElementById('resize-frame') && document.getElementById('resize-frame').checked);
+  const scaleContent = !!(document.getElementById('resize-content') && document.getElementById('resize-content').checked);
+  if (!scaleFrame && !scaleContent) return false;
+
+  const widthEl = document.getElementById('resize-width');
+  const heightEl = document.getElementById('resize-height');
+  const lockBtn = document.getElementById('lock-proportion');
+  const lockRatio = !!(lockBtn && lockBtn.classList.contains('active'));
+
+  const width = widthEl ? parseFloat(widthEl.value) : NaN;
+  const height = heightEl ? parseFloat(heightEl.value) : NaN;
+
+  if (lockRatio) {
+    const hasOneSide = (Number.isFinite(width) && width >= MIN_DIMENSION) || (Number.isFinite(height) && height >= MIN_DIMENSION);
+    return hasOneSide;
+  }
+
+  return Number.isFinite(width) && Number.isFinite(height) && width >= MIN_DIMENSION && height >= MIN_DIMENSION;
+}
+
+function canLivePreviewDistribute() {
+  if (!hasActiveSelection()) return false;
+  const horizontal = !!(document.getElementById('distribute-horizontal') && document.getElementById('distribute-horizontal').checked);
+  const vertical = !!(document.getElementById('distribute-vertical') && document.getElementById('distribute-vertical').checked);
+  if (!horizontal && !vertical) return false;
+
+  const gapEl = document.getElementById('distribute-gap');
+  if (gapEl) {
+    const raw = String(gapEl.value || '').trim();
+    if (raw) {
+      const gap = parseFloat(raw);
+      if (!Number.isFinite(gap) || gap < 0) return false;
+    }
+  }
+
+  return true;
+}
+
+function livePreviewDistributeScaleRequiresUndo() {
+  const formatMode = getCheckedRadioValue('format-mode', 'single');
+  if (formatMode !== 'multi') return false;
+
+  const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
+  const allowEmptyFrames = allowEmptyFramesEl ? !!allowEmptyFramesEl.checked : !!pluginSettings.allowEmptyFrames;
+
+  const layoutStyleEl = document.getElementById('multi-layout-style');
+  const style = layoutStyleEl ? String(layoutStyleEl.value || '') : String(pluginSettings.multiLayoutStyle || 'grid');
+
+  const masonryFillEl = document.getElementById('masonry-fill-page');
+  const masonryFillPage = masonryFillEl ? !!masonryFillEl.checked : !!pluginSettings.masonryFillPage;
+
+  // These options can create additional objects; without undo this can quickly accumulate.
+  return !!(allowEmptyFrames || (style === 'masonry' && masonryFillPage));
+}
+
+function canLivePreviewDistributeScale(state) {
+  if (!hasActiveSelection()) return false;
+  const spacingEl = document.getElementById('spacing');
+  const spacingRaw = spacingEl ? String(spacingEl.value || '').trim() : '';
+  const spacing = parseFloat(spacingRaw);
+  if (!Number.isFinite(spacing) || spacing < 0) return false;
+
+  const scaleFrame = !!(document.getElementById('scale-frame') && document.getElementById('scale-frame').checked);
+  const scaleContent = !!(document.getElementById('scale-content') && document.getElementById('scale-content').checked);
+  if (!scaleFrame && !scaleContent) return false;
+
+  const formatMode = getCheckedRadioValue('format-mode', 'single');
+  if (formatMode === 'multi') {
+    if (!Array.isArray(definedFormats) || definedFormats.length === 0) return false;
+  }
+
+  if (livePreviewDistributeScaleRequiresUndo() && !supportsUndo()) {
+    if (state && !state.warnedNoUndo) {
+      state.warnedNoUndo = true;
+      appendLog('Live-Vorschau: Undo ist nicht verfügbar; Multi-Format mit leeren Rahmen / Fill-Page wird nicht automatisch angewendet.');
+    }
+    return false;
+  }
+
+  return true;
+}
+
+function canLivePreviewFitToFrame() {
+  return hasActiveSelection();
+}
+
+async function applyFitToFrame() {
+  try {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
+      showMessage(t('msg.noActiveDocument'), true);
+      return;
+    }
+    if (!doc || !doc.selection || doc.selection.length === 0) {
+      showMessage(t('msg.noSelection'), true);
+      return;
+    }
+
+    const mode = getCheckedRadioValue('scale-mode', 'fit-vert');
+
+    let processed = 0;
+    for (let i = 0; i < doc.selection.length; i++) {
+      const frame = doc.selection[i];
+      if (frame && frame.allGraphics && frame.allGraphics.length > 0 && frame.geometricBounds) {
+        const frameBounds = frame.geometricBounds;
+        const frameWidth = frameBounds[3] - frameBounds[1];
+        const frameHeight = frameBounds[2] - frameBounds[0];
+
+        for (let g = 0; g < frame.allGraphics.length; g++) {
+          const graphic = frame.allGraphics[g];
+          if (!graphic || !graphic.geometricBounds) continue;
+
+          try {
+            // Reset scaling
+            graphic.absoluteHorizontalScale = 100;
+            graphic.absoluteVerticalScale = 100;
+
+            const gb = graphic.geometricBounds;
+            const gw = gb[3] - gb[1];
+            const gh = gb[2] - gb[0];
+
+            if (gw <= 0 || gh <= 0 || frameWidth <= 0 || frameHeight <= 0) continue;
+
+            let scaleX = 100;
+            let scaleY = 100;
+
+            if (mode === 'stretch') {
+              // True stretch: width AND height independently (distorts)
+              scaleX = (frameWidth / gw) * 100;
+              scaleY = (frameHeight / gh) * 100;
+              appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(1)}%, scaleY=${scaleY.toFixed(1)}%`);
+            } else if (mode === 'fill') {
+              // Fill: choose bigger factor so content covers the frame
+              const scaleToFitWidth = (frameWidth / gw) * 100;
+              const scaleToFitHeight = (frameHeight / gh) * 100;
+
+              if (scaleToFitWidth > scaleToFitHeight) {
+                const s = scaleToFitWidth;
+                scaleX = s;
+                scaleY = s;
+                const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
+                appendLog(`  -> Fill (horz) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% > ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+              } else {
+                const s = scaleToFitHeight;
+                scaleX = s;
+                scaleY = s;
+                const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
+                appendLog(`  -> Fill (vert) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% < ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+              }
+            } else if (mode === 'fit-vert') {
+              const s = (frameHeight / gh) * 100;
+              scaleX = s;
+              scaleY = s;
+            } else if (mode === 'fit-horz') {
+              const s = (frameWidth / gw) * 100;
+              scaleX = s;
+              scaleY = s;
+            }
+
+            graphic.absoluteHorizontalScale = scaleX;
+            graphic.absoluteVerticalScale = scaleY;
+
+            // Center after scaling
+            if (frame.fit && FitOptions) {
+              frame.fit(FitOptions.CENTER_CONTENT);
+            } else {
+              const newGB = graphic.geometricBounds;
+              const graphicWidth = newGB[3] - newGB[1];
+              const graphicHeight = newGB[2] - newGB[0];
+              const frameCenterX = frameBounds[1] + frameWidth / 2;
+              const frameCenterY = frameBounds[0] + frameHeight / 2;
+
+              graphic.geometricBounds = [
+                frameCenterY - graphicHeight / 2,
+                frameCenterX - graphicWidth / 2,
+                frameCenterY + graphicHeight / 2,
+                frameCenterX + graphicWidth / 2
+              ];
+            }
+          } catch (err) {
+            appendLog(`Grafik konnte nicht skaliert werden: ${err.message}`);
+          }
+        }
+        processed++;
+      }
+    }
+
+    appendLog(`Scale to Frame (${mode}): ${processed} Rahmen verarbeitet`);
+    showMessage(t('msg.scaledFrames', { count: processed, mode }));
+  } catch (e) {
+    showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
+    appendLog('Scale to Frame Fehler: ' + e.message);
+  }
+}
+
+const livePreviewRegistry = {
+  resize: {
+    checkboxId: 'preview-resize',
+    debounceMs: 300,
+    apply: () => applyResize(),
+    canRun: () => canLivePreviewResize(),
+    watchIds: ['resize-width', 'resize-height', 'resize-frame', 'resize-content', 'lock-proportion'],
+    watchNames: []
+  },
+  distribute: {
+    checkboxId: 'preview-distribute',
+    debounceMs: 300,
+    apply: () => applyDistribute(),
+    canRun: () => canLivePreviewDistribute(),
+    watchIds: ['distribute-horizontal', 'distribute-vertical', 'distribute-gap', 'grid-cols', 'grid-rows'],
+    watchNames: ['distribution-area', 'distribution-method']
+  },
+  distributeScale: {
+    checkboxId: 'preview-distribute-scale',
+    debounceMs: 550,
+    apply: () => applyDistributeScale(),
+    canRun: (state) => canLivePreviewDistributeScale(state),
+    watchIds: [
+      'spacing',
+      'scale-min-width', 'scale-max-width', 'scale-min-height', 'scale-max-height',
+      'scale-frame', 'scale-content',
+      'scale-keep-aspect',
+      'allow-empty-frames',
+      'scale-formats-to-fit',
+      'multi-layout-style',
+      'masonry-cols', 'masonry-seed', 'masonry-fill-page'
+    ],
+    watchNames: ['scale-distribution-area', 'format-mode']
+  },
+  fitToFrame: {
+    checkboxId: 'preview-fit-to-frame',
+    debounceMs: 300,
+    apply: () => applyFitToFrame(),
+    canRun: () => canLivePreviewFitToFrame(),
+    watchIds: [],
+    watchNames: ['scale-mode']
+  }
+};
+
+const livePreviewState = {
+  resize: { enabled: false, applied: false, running: false, pending: false, warnedNoUndo: false, schedule: null },
+  distribute: { enabled: false, applied: false, running: false, pending: false, warnedNoUndo: false, schedule: null },
+  distributeScale: { enabled: false, applied: false, running: false, pending: false, warnedNoUndo: false, schedule: null },
+  fitToFrame: { enabled: false, applied: false, running: false, pending: false, warnedNoUndo: false, schedule: null }
+};
+
+function requestLivePreview(kind) {
+  const st = livePreviewState[kind];
+  if (!st || !st.enabled || typeof st.schedule !== 'function') return;
+  st.schedule();
+}
+
+async function runLivePreview(kind) {
+  const cfg = livePreviewRegistry[kind];
+  const st = livePreviewState[kind];
+  if (!cfg || !st || !st.enabled) return;
+
+  const canRun = typeof cfg.canRun === 'function' ? cfg.canRun(st) : true;
+  if (!canRun) return;
+
+  if (st.running) {
+    st.pending = true;
+    return;
+  }
+
+  st.running = true;
+  const prevSuppress = typeof window !== 'undefined' ? window.__ppSuppressPopups : false;
+  try {
+    if (typeof window !== 'undefined') window.__ppSuppressPopups = true;
+
+    // Replace previous preview result with a fresh one (Adobe-style).
+    if (st.applied && supportsUndo()) {
+      tryUndoOnce();
+      st.applied = false;
+    }
+
+    await cfg.apply();
+
+    // Only mark as revertible if undo exists.
+    st.applied = supportsUndo();
+  } finally {
+    if (typeof window !== 'undefined') window.__ppSuppressPopups = prevSuppress;
+    st.running = false;
+    if (st.pending) {
+      st.pending = false;
+      // queue next run quickly
+      try { requestLivePreview(kind); } catch (_) { }
+    }
+  }
+}
+
+async function applyWithLivePreviewCommit(kind, applyFn) {
+  const st = livePreviewState[kind];
+  try {
+    // If there is an active preview state, revert it first to commit a clean step.
+    if (st && st.enabled && st.applied && supportsUndo()) {
+      tryUndoOnce();
+      st.applied = false;
+    }
+    await applyFn();
+  } finally {
+    if (st) st.applied = false;
+  }
+}
+
+function initLivePreviewWiring() {
+  const wire = (kind) => {
+    const cfg = livePreviewRegistry[kind];
+    const st = livePreviewState[kind];
+    if (!cfg || !st) return;
+
+    const toggle = document.getElementById(cfg.checkboxId);
+    if (!toggle) return;
+
+    st.schedule = debounce(() => {
+      void runLivePreview(kind);
+    }, cfg.debounceMs || 300);
+
+    const onToggle = () => {
+      st.enabled = !!toggle.checked;
+      st.pending = false;
+      st.warnedNoUndo = false;
+
+      if (!st.enabled) {
+        if (st.applied && supportsUndo()) {
+          tryUndoOnce();
+        }
+        st.applied = false;
+        return;
+      }
+
+      // run once immediately when enabled
+      requestLivePreview(kind);
+    };
+    toggle.addEventListener('change', onToggle);
+    onToggle();
+
+    const watchEl = (el) => {
+      if (!el) return;
+      const tag = String(el.tagName || '').toUpperCase();
+      const type = (el.getAttribute && el.getAttribute('type')) ? String(el.getAttribute('type')) : '';
+      const isButton = tag === 'BUTTON';
+      const events = isButton ? ['click'] : (type === 'checkbox' || type === 'radio') ? ['change'] : ['input', 'change'];
+      events.forEach((ev) => {
+        el.addEventListener(ev, () => {
+          if (!st.enabled) return;
+          requestLivePreview(kind);
+        });
+      });
+    };
+
+    (cfg.watchIds || []).forEach((id) => watchEl(document.getElementById(id)));
+    (cfg.watchNames || []).forEach((name) => {
+      document.querySelectorAll(`input[name="${name}"]`).forEach((el) => watchEl(el));
+    });
+  };
+
+  Object.keys(livePreviewRegistry).forEach(wire);
+}
+
 function initPanel() {
   // Catch runtime errors and surface them into the log when possible.
   try {
@@ -2269,7 +2695,10 @@ function initPanel() {
   // Multi-Format Buttons
   const addFormatBtn = document.getElementById('add-format-btn');
   if (addFormatBtn) {
-    addFormatBtn.addEventListener('click', addFormat);
+    addFormatBtn.addEventListener('click', () => {
+      addFormat();
+      try { requestLivePreview('distributeScale'); } catch (_) { }
+    });
   }
 
   const cancelEditFormatBtn = document.getElementById('cancel-edit-format-btn');
@@ -2289,7 +2718,10 @@ function initPanel() {
 
   const clearFormatsBtn = document.getElementById('clear-formats-btn');
   if (clearFormatsBtn) {
-    clearFormatsBtn.addEventListener('click', clearFormats);
+    clearFormatsBtn.addEventListener('click', () => {
+      clearFormats();
+      try { requestLivePreview('distributeScale'); } catch (_) { }
+    });
   }
 
   // Initialize format list
@@ -2566,9 +2998,9 @@ function initPanel() {
   const applyDistributeBtn = document.getElementById('apply-distribute-btn');
   const applyDistributeScaleBtn = document.getElementById('apply-distribute-scale-btn');
 
-  if (applyResizeBtn) applyResizeBtn.addEventListener('click', applyResize);
-  if (applyDistributeBtn) applyDistributeBtn.addEventListener('click', applyDistribute);
-  if (applyDistributeScaleBtn) applyDistributeScaleBtn.addEventListener('click', applyDistributeScale);
+  if (applyResizeBtn) applyResizeBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('resize', applyResize); });
+  if (applyDistributeBtn) applyDistributeBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('distribute', applyDistribute); });
+  if (applyDistributeScaleBtn) applyDistributeScaleBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('distributeScale', applyDistributeScale); });
 
   const copyLogBtn = document.getElementById('copy-log-btn');
   if (copyLogBtn) {
@@ -2633,122 +3065,11 @@ function initPanel() {
 
   const scaleToFrameBtn = document.getElementById('scale-to-frame-btn');
   if (scaleToFrameBtn) {
-    scaleToFrameBtn.addEventListener('click', async () => {
-      try {
-        const doc = getActiveDocumentSafe();
-        if (!doc) {
-          showMessage(t('msg.noActiveDocument'), true);
-          return;
-        }
-        if (!doc || !doc.selection || doc.selection.length === 0) {
-          showMessage(t('msg.noSelection'), true);
-          return;
-        }
-
-        const mode = getCheckedRadioValue('scale-mode', 'fit-vert');
-
-        let processed = 0;
-        for (let i = 0; i < doc.selection.length; i++) {
-          const frame = doc.selection[i];
-          if (frame && frame.allGraphics && frame.allGraphics.length > 0 && frame.geometricBounds) {
-            const frameBounds = frame.geometricBounds;
-            const frameWidth = frameBounds[3] - frameBounds[1];
-            const frameHeight = frameBounds[2] - frameBounds[0];
-
-            for (let g = 0; g < frame.allGraphics.length; g++) {
-              const graphic = frame.allGraphics[g];
-              if (!graphic || !graphic.geometricBounds) continue;
-
-              try {
-                // Reset scaling
-                graphic.absoluteHorizontalScale = 100;
-                graphic.absoluteVerticalScale = 100;
-
-                const gb = graphic.geometricBounds;
-                const gw = gb[3] - gb[1];
-                const gh = gb[2] - gb[0];
-
-                if (gw <= 0 || gh <= 0 || frameWidth <= 0 || frameHeight <= 0) continue;
-
-                let scaleX = 100;
-                let scaleY = 100;
-
-                if (mode === 'stretch') {
-                  // Echtes Strecken: Setze Breite UND Höhe unabhängig (verzerrt)
-                  scaleX = (frameWidth / gw) * 100;
-                  scaleY = (frameHeight / gh) * 100;
-                  appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(1)}%, scaleY=${scaleY.toFixed(1)}%`);
-                } else if (mode === 'fill') {
-                  // Ausfüllen: Wähle pro Objekt ob horizontal oder vertikal angepasst wird
-                  // Ziel: Rahmen wird gefüllt, Content >= Rahmen in beiden Dimensionen
-                  const scaleToFitWidth = (frameWidth / gw) * 100;
-                  const scaleToFitHeight = (frameHeight / gh) * 100;
-
-                  // Wähle die Richtung wo mehr Skalierung nötig ist (= größerer Faktor)
-                  // Damit wird der Content mindestens so groß wie der Rahmen in beiden Dimensionen
-                  if (scaleToFitWidth > scaleToFitHeight) {
-                    // Horizontal braucht mehr Skalierung -> nutze horizontal
-                    const s = scaleToFitWidth;
-                    scaleX = s;
-                    scaleY = s;
-                    const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                    appendLog(`  -> Fill (horz) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% > ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
-                  } else {
-                    // Vertikal braucht mehr Skalierung -> nutze vertikal
-                    const s = scaleToFitHeight;
-                    scaleX = s;
-                    scaleY = s;
-                    const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                    appendLog(`  -> Fill (vert) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% < ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
-                  }
-                } else if (mode === 'fit-vert') {
-                  const s = (frameHeight / gh) * 100;
-                  scaleX = s;
-                  scaleY = s;
-                } else if (mode === 'fit-horz') {
-                  const s = (frameWidth / gw) * 100;
-                  scaleX = s;
-                  scaleY = s;
-                }
-
-                // Verwende absoluteHorizontalScale/absoluteVerticalScale für unabhängige Skalierung
-                graphic.absoluteHorizontalScale = scaleX;
-                graphic.absoluteVerticalScale = scaleY;
-
-                // Zentriere die Grafik nach dem Skalieren
-                if (frame.fit && FitOptions) {
-                  frame.fit(FitOptions.CENTER_CONTENT);
-                } else {
-                  // Manuelle Zentrierung
-                  const newGB = graphic.geometricBounds;
-                  const graphicWidth = newGB[3] - newGB[1];
-                  const graphicHeight = newGB[2] - newGB[0];
-                  const frameCenterX = frameBounds[1] + frameWidth / 2;
-                  const frameCenterY = frameBounds[0] + frameHeight / 2;
-
-                  graphic.geometricBounds = [
-                    frameCenterY - graphicHeight / 2,
-                    frameCenterX - graphicWidth / 2,
-                    frameCenterY + graphicHeight / 2,
-                    frameCenterX + graphicWidth / 2
-                  ];
-                }
-              } catch (err) {
-                appendLog(`Grafik konnte nicht skaliert werden: ${err.message}`);
-              }
-            }
-            processed++;
-          }
-        }
-
-        appendLog(`Scale to Frame (${mode}): ${processed} Rahmen verarbeitet`);
-        showMessage(t('msg.scaledFrames', { count: processed, mode }));
-      } catch (e) {
-        showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
-        appendLog("Scale to Frame Fehler: " + e.message);
-      }
-    });
+    scaleToFrameBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('fitToFrame', applyFitToFrame); });
   }
+
+  // Live preview wiring (checkboxes + debounced change listeners)
+  initLivePreviewWiring();
 
   // Async init: load saved settings, apply language/tooltips, sync UI controls
   void (async () => {

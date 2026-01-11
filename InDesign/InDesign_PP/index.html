@@ -319,6 +319,17 @@
       margin-top: 8px;
     }
 
+    .preview-toggle {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+      margin-bottom: -4px;
+    }
+
+    .preview-toggle .checkbox-item {
+      margin: 0;
+    }
+
     .button-group>button {
       flex: 1 1 auto;
       min-width: 140px;
@@ -689,6 +700,12 @@
         <button class="btn-secondary btn-small" id="delete-template-btn">Löschen</button>
       </div>
 
+      <div class="preview-toggle">
+        <div class="checkbox-item">
+          <input type="checkbox" id="preview-resize">
+          <label for="preview-resize" id="label-preview-resize">Live-Vorschau</label>
+        </div>
+      </div>
       <div class="button-group">
         <button class="btn-primary" id="apply-resize-btn">Anwenden</button>
       </div>
@@ -755,6 +772,13 @@
           <input type="number" id="grid-rows" class="input-small" placeholder="Zeilen" min="1" value="3">
         </div>
       </div>
+
+      <div class="preview-toggle">
+        <div class="checkbox-item">
+          <input type="checkbox" id="preview-distribute">
+          <label for="preview-distribute" id="label-preview-distribute">Live-Vorschau</label>
+        </div>
+      </div>
       <div class="button-group">
         <button class="btn-primary" id="apply-distribute-btn">Verteilen</button>
       </div>
@@ -781,6 +805,13 @@
       </div>
       <div class="form-group">
         <label>Abstand zwischen Elementen</label>
+
+        <div class="preview-toggle">
+          <div class="checkbox-item">
+            <input type="checkbox" id="preview-distribute-scale">
+            <label for="preview-distribute-scale" id="label-preview-distribute-scale">Live-Vorschau</label>
+          </div>
+        </div>
         <div style="display: flex; align-items: center; gap: 4px;">
           <input type="number" id="spacing" class="input-small" placeholder="Abstand" value="5" step="0.1">
           <span class="unit-label">mm</span>
@@ -993,6 +1024,13 @@
         </div>
         <p class="helper-text">Ausfüllen: Wählt automatisch horizontal oder vertikal, so dass der Rahmen vollständig
           gefüllt wird.</p>
+      </div>
+
+      <div class="preview-toggle">
+        <div class="checkbox-item">
+          <input type="checkbox" id="preview-fit-to-frame">
+          <label for="preview-fit-to-frame" id="label-preview-fit-to-frame">Live-Vorschau</label>
+        </div>
       </div>
       <div class="button-group">
         <button class="btn-primary" id="scale-to-frame-btn">An Rahmen anpassen</button>
