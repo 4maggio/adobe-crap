@@ -1,126 +1,138 @@
-# InDesign Page & Frame Tools
+# InDesign Page & Frame Tools (UXP Panel)
 
-Ein UXP Plugin für Adobe InDesign zur effizienten Verwaltung und Verteilung von Objekten auf Druckbögen.
+Ein UXP-Panel für Adobe InDesign zum schnellen Skalieren, Verteilen und Layouten von Rahmen/Objekten auf Seiten oder innerhalb einer Auswahl.
 
-## Features
+## Tabs (UI)
 
-### 1. Größenzuweisung
-Weisen Sie ausgewählten Objekten (z.B. Bildrahmen) präzise Größen zu:
-- **Direkte Eingabe**: Geben Sie Breite und Höhe in Millimetern ein
-- **Template-System**: Speichern Sie häufig verwendete Größen (z.B. "6cm x 4cm") als Templates zur Wiederverwendung
-- **Flexible Skalierung**: Wählen Sie aus, ob nur der Rahmen, nur der Inhalt oder beides skaliert werden soll
+- 📐 **Größe**: feste Zielgröße + Templates
+- ↔ **Verteilen**: nur Positionen (ohne Skalierung)
+- ⧉ **Layout**: Verteilen & Skalieren (Single- oder Multi-Format, Grid/Masonry)
+- 🛠 **Tools**: Hilfsfunktionen für Rahmen/Inhalt
+- ⚙ **Einst.**: Sprache, UI-Größen, Log/Popups
 
-**Verwendung:**
-1. Wählen Sie Objekte in InDesign aus
-2. Geben Sie Breite und Höhe ein oder wählen Sie ein Template
-3. Wählen Sie aus, was skaliert werden soll (Rahmen/Inhalt)
-4. Klicken Sie auf "Anwenden"
+## Features & Verwendung
 
-### 2. Verteilen ohne Skalierung
-Verteilen Sie ausgewählte Elemente gleichmäßig auf dem Druckbogen:
-- **Gleiche Abstände**: Alle Abstände zwischen Elementen und zu den Seitenrändern sind identisch
-- **Automatische Anordnung**: Findet die optimale Raster-Anordnung
-- **Manuelles Raster**: Definieren Sie selbst die Anzahl der Spalten und Zeilen
-- **Richtungsauswahl**: Verteilen Sie horizontal, vertikal oder beides
+### 1) 📐 Größe (Größenzuweisung)
 
-**Verwendung:**
-1. Wählen Sie Objekte aus
-2. Wählen Sie Richtung (horizontal/vertikal)
-3. Wählen Sie zwischen automatischer oder manueller Rasteranordnung
-4. Klicken Sie auf "Verteilen"
+- Zielgröße in **mm** eingeben (Breite/Höhe)
+- 🔗 **Proportionen sperren**: wenn aktiv, reicht Breite *oder* Höhe
+- **Was skalieren?** Rahmen, Inhalt oder beides
+- **Templates** speichern/löschen und wiederverwenden
 
-### 3. Verteilen mit Skalierung
-Verteilen und skalieren Sie Elemente, um die gesamte Seite optimal zu nutzen:
-- **Definierte Abstände**: Legen Sie einheitliche Abstände zwischen allen Elementen fest
-- **Min/Max Constraints**: Setzen Sie Mindest- und Maximalwerte für Breite und Höhe
-- **Intelligente Skalierung**: Objekte werden automatisch skaliert, um die Seite zu füllen
-- **Flexible Skalierungsoptionen**: Skalieren Sie Rahmen, Inhalt oder beides
+Schritte:
+1. Objekte in InDesign auswählen
+2. Breite/Höhe setzen (oder Template wählen)
+3. Skalier-Ziel wählen
+4. **Anwenden**
 
-**Verwendung:**
-1. Wählen Sie Objekte aus
-2. Geben Sie den gewünschten Abstand ein (z.B. 5mm)
-3. Optional: Setzen Sie Min/Max-Werte für Breite und Höhe
-4. Wählen Sie aus, was skaliert werden soll
-5. Klicken Sie auf "Verteilen & Skalieren"
+### 2) ↔ Verteilen (ohne Skalierung)
+
+- Gleichmäßige Verteilung mit definiertem Abstand
+- Bereich: **Gesamte Seite** oder **Innerhalb der Auswahl (Bounding Box)**
+- Anordnung: **Automatisch** (optimiert) oder **Raster** (Spalten/Zeilen)
+
+Schritte:
+1. Objekte auswählen
+2. Richtung + Abstand + Bereich wählen
+3. **Verteilen**
+
+### 3) ⧉ Layout (Verteilen & Skalieren)
+
+#### Single-Modus (wie bisher)
+
+- Abstand + Bereich wie oben
+- **Was skalieren?** Rahmen, Inhalt oder beides
+- Skalierungsmodus (z.B. anpassen/ausfüllen/strecken)
+- **Größenbeschränkungen**: Min/Max Breite/Höhe
+- Option **„Seitenverhältnis beibehalten“**: skaliert uniform, damit die ursprünglichen Proportionen erhalten bleiben
+
+#### Multi-Modus (mehrere Formate)
+
+- **Formatliste** (Breite/Höhe in mm) mit **Min/Max Vorkommen** pro Format
+- **Leere Rahmen erlauben**: erzeugt zusätzliche leere Slots, wenn die Summe der Min-Werte größer als die Auswahl ist
+- **Formate automatisch an Seite anpassen**: skaliert alle Multi-Formate proportional herunter, damit das größte Format überhaupt in den Bereich passt
+- Layout-Stil:
+  - **Raster** (klassisch)
+  - **Masonry (Spalten)** mit Einstellungen: **Spalten**, **Seed** (reproduzierbare Shuffle-Reihenfolge), **Seite auffüllen**
+
+### 4) 🛠 Tools
+
+- **Inhalt zentrieren**: zentriert Grafiken innerhalb ausgewählter Rahmen
+- **An Rahmen anpassen**: passt Inhalt an den Rahmen an (je nach Modus)
+
+### 5) ⚙ Einst.
+
+- Sprache (DE/EN)
+- UI-Parameter: **Fontgröße**, Gap, Padding, Divider-Margin
+- Toggles: **Logfenster anzeigen**, **Popups anzeigen**
+- Log-Aktionen: **Log kopieren**, **Log löschen**
+
+## Speicherung (Persistenz)
+
+Die Daten werden im Plugin-Datenordner per UXP File System API gespeichert:
+
+- `templates.json` (Templates)
+- `settings.json` (UI-Einstellungen, Multi-Formate, Masonry-Optionen, Toggles, …)
 
 ## Installation
 
-1. Öffnen Sie das UXP Developer Tool
-2. Laden Sie das Plugin über "Add Plugin"
-3. Wählen Sie die `manifest.json` Datei aus
-4. Klicken Sie auf "Load"
+1. UXP Developer Tool öffnen
+2. **Add Plugin** → `manifest.json` auswählen
+3. **Load**
 
 ## Systemanforderungen
 
-- Adobe InDesign 2024 oder neuer (Version 20.5.0+)
+- Adobe InDesign 2024 oder neuer (z.B. 20.5.0+)
 - UXP Plugin Support
 
 ## Technische Details
 
 ### Einheiten
-- **Eingabe**: Alle Größenangaben erfolgen in Millimetern (mm)
-- **Intern**: InDesign arbeitet mit Punkten (1mm = 2.834645669 Punkte)
-- Das Plugin konvertiert automatisch zwischen den Einheiten
+
+- **Eingabe/UI**: mm
+- **InDesign intern**: Punkte
+- Umrechnung: $1\,\mathrm{mm} \approx 2.834645669\,\mathrm{pt}$
 
 ### Bounds & Koordinaten
-- InDesign verwendet `geometricBounds`: `[y1, x1, y2, x2]`
-- y1, x1: Obere linke Ecke
-- y2, x2: Untere rechte Ecke
 
-### Template-Speicherung
-Templates werden im lokalen Storage des Browsers gespeichert und bleiben auch nach Neustart von InDesign erhalten.
+- InDesign verwendet `geometricBounds` im Format: `[y1, x1, y2, x2]` (Top, Left, Bottom, Right)
+- Layout-Entscheidungen (Grid/Masonry) basieren auf diesen Bounds.
+
+### Persistenz
+
+- `templates.json`: Größen-Templates
+- `settings.json`: UI-Settings, Multi-Formate, Masonry-Optionen, Toggles
+
+Hinweis: Bei UI/JS-Caching in UXP hilft der Build-Stamp im Tab **⚙ Einst.**.
 
 ## Best Practices
 
-1. **Größenzuweisung**: 
-   - Erstellen Sie Templates für häufig verwendete Größen
-   - Nutzen Sie "Nur Rahmen" für leere Frames, "Beides" für Frames mit Inhalt
-
-2. **Verteilen ohne Skalierung**:
-   - Verwenden Sie die automatische Anordnung für schnelle Ergebnisse
-   - Nutzen Sie das manuelle Raster für präzise Kontrolle über Layout
-
-3. **Verteilen mit Skalierung**:
-   - Setzen Sie realistische Min/Max-Werte, um extreme Skalierungen zu vermeiden
-   - Testen Sie verschiedene Abstandswerte für optimale Ergebnisse
+- **Saubere Auswahl**: Für Layout/Multi am besten nur Rahmen/Objekte auswählen, die wirklich gelayoutet werden sollen.
+- **Multi-Formate**: Erst 1–3 Formate definieren, dann Min/Max schrittweise verschärfen.
+- **„Formate an Seite anpassen“**: Aktivieren, wenn Formate größer als der Bereich sein könnten (verhindert „passt nie“).
+- **Masonry**: Spaltenzahl klein starten (z.B. 2–3), Seed setzen, damit Ergebnisse reproduzierbar sind.
+- **„Seite auffüllen“**: Nur aktivieren, wenn zusätzliche (leere) Rahmen ok sind.
 
 ## Troubleshooting
 
-**Problem**: "Keine Objekte ausgewählt"
-- Lösung: Stellen Sie sicher, dass mindestens ein Objekt auf dem Druckbogen ausgewählt ist
-
-**Problem**: "Kein aktives Dokument"
-- Lösung: Öffnen Sie ein InDesign-Dokument
-
-**Problem**: Templates werden nicht gespeichert
-- Lösung: Prüfen Sie, ob localStorage im Browser aktiviert ist
+- **„Kein aktives Dokument“**: Dokument öffnen und sicherstellen, dass ein Dokument aktiv ist
+- **„Keine Objekte ausgewählt“**: mindestens ein Objekt auswählen
+- **UI-Änderungen nicht sichtbar**: Panel schließen und neu öffnen (UXP cached UI/JS manchmal)
 
 ## Entwicklung
 
 ### Struktur
+
 ```
 InDesign_PP/
-├── manifest.json     # Plugin-Manifest
-├── index.html        # UI (Panel)
-├── main.js          # Hauptlogik
-├── package.json     # NPM-Konfiguration
-└── icons/           # Plugin-Icons
+├── manifest.json      # Plugin-Manifest
+├── index.html         # UI (Panel)
+├── main.js            # Logik (InDesign API + UI wiring)
+├── package.json       # Build/Meta
+├── icons/             # Icons
+└── builds/            # gebaute Versionen (falls genutzt)
 ```
-
-### API-Verwendung
-- `app.activeDocument`: Aktuelles Dokument
-- `doc.selection`: Ausgewählte Objekte
-- `item.geometricBounds`: Objekt-Koordinaten
-- `item.allGraphics`: Grafikinhalte eines Objekts
-- `graphic.horizontalScale/verticalScale`: Inhaltsskalierung
-
-### Entry Points
-Das Plugin verwendet einen Panel-Entry-Point (`mainPanel`), der die persistente UI bereitstellt.
 
 ## Lizenz
 
-Copyright © 2025
-
-## Support
-
-Bei Fragen oder Problemen wenden Sie sich an den Entwickler.
+AGPL-3.0-or-later – siehe LICENSE im Repo-Root.
