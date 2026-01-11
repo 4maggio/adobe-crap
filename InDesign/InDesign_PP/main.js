@@ -1,13 +1,75 @@
 const { entrypoints } = require("uxp");
-const { app, FitOptions } = require("indesign");
+// NOTE: In UXP some module exports can behave like dynamic getters.
+// Avoid destructuring `app` at require-time; resolve it on demand.
+const { FitOptions } = require("indesign");
 const fs = require("uxp").storage.localFileSystem;
 
 // Bump this when debugging UI caching/reload issues
-const BUILD_ID = "2026-01-11-UI-INIT-2";
+const BUILD_ID = "2026-01-11-GENERATOR-5";
 
 // In UXP, DOMContentLoaded can be unreliable depending on panel lifecycle.
 // We initialize from both DOMContentLoaded and entrypoints.show(), guarded to run once.
 let panelInitialized = false;
+
+function getInDesignApp() {
+  try {
+    const mod = require('indesign');
+    return mod && mod.app ? mod.app : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function getActiveDocumentSafe() {
+  const app = getInDesignApp();
+  if (!app) return null;
+  try {
+    if (app.activeDocument) return app.activeDocument;
+  } catch (_) {
+    // ignore
+  }
+  try {
+    if (app.documents && app.documents.length > 0) return app.documents[0];
+  } catch (_) {
+    // ignore
+  }
+  return null;
+}
+
+function xmur3(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
+  };
+}
+
+function mulberry32(a) {
+  return function () {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle(arr, seedStr) {
+  const seedFn = xmur3(String(seedStr || ''));
+  const rand = mulberry32(seedFn());
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
 
 function safeInitPanel(source) {
   if (panelInitialized) return;
@@ -32,10 +94,11 @@ function safeInitPanel(source) {
 // Storage für Templates (UXP File System API)
 const STORAGE_FILENAME = "templates.json";
 const SETTINGS_FILENAME = "settings.json";
-const LOG_LIMIT = 200;
+const LOG_LIMIT = 2000;
 const MIN_DIMENSION = 0.1; // Minimale Breite/Höhe in mm
 const MAX_DIMENSION = 10000; // Maximale Breite/Höhe in mm
 const logBuffer = [];
+let logAutoScrollEnabled = true;
 
 // Storage Helper für File System API
 let pluginDataFolder = null;
@@ -60,6 +123,12 @@ const DEFAULT_SETTINGS = {
   logEnabled: true,
   popupsEnabled: true,
   formats: [],
+  allowEmptyFrames: false,
+  scaleFormatsToFit: false,
+  multiLayoutStyle: "grid",
+  masonryCols: 3,
+  masonrySeed: "",
+  masonryFillPage: false,
   ui: {
     font: 11,
     gap: 8,
@@ -128,6 +197,18 @@ const I18N = {
 
     "label.formatsDefine": "Formate definieren",
     "label.formatAdd": "Neues Format hinzufügen",
+    "label.allowEmptyFrames": "Leere Rahmen erlauben",
+    "help.allowEmptyFrames": "Erstellt zusätzliche leere Rahmen, wenn die Summe der Min-Werte größer ist als die Auswahl.",
+    "label.scaleFormatsToFit": "Formate automatisch an Seite anpassen",
+    "help.scaleFormatsToFit": "Skaliert alle Multi-Formate proportional herunter, damit das größte Format in den Bereich passt.",
+    "label.multiLayoutStyle": "Layout-Stil",
+    "ui.layout.grid": "Raster",
+    "ui.layout.masonry": "Masonry (Spalten)",
+    "label.masonrySettings": "Masonry Einstellungen",
+    "label.masonryCols": "Spalten",
+    "label.masonrySeed": "Seed",
+    "label.masonryFillPage": "Seite auffüllen",
+    "help.masonry": "Füllt spaltenweise von oben nach unten. Optional werden zusätzliche leere Rahmen erstellt, bis kein Format mehr passt.",
     "help.formatMinMax": "Min/Max: 0 = beliebig viele",
     "ui.minMax": "Min: {min}, Max: {max}",
 
@@ -222,6 +303,18 @@ const I18N = {
 
     "label.formatsDefine": "Define formats",
     "label.formatAdd": "Add new format",
+    "label.allowEmptyFrames": "Allow empty frames",
+    "help.allowEmptyFrames": "Creates additional empty frames if the sum of Min values exceeds the selection.",
+    "label.scaleFormatsToFit": "Auto scale formats to fit",
+    "help.scaleFormatsToFit": "Scales down all multi formats proportionally so the largest format fits in the area.",
+    "label.multiLayoutStyle": "Layout style",
+    "ui.layout.grid": "Grid",
+    "ui.layout.masonry": "Masonry (columns)",
+    "label.masonrySettings": "Masonry settings",
+    "label.masonryCols": "Columns",
+    "label.masonrySeed": "Seed",
+    "label.masonryFillPage": "Fill page",
+    "help.masonry": "Fills columns top-to-bottom. Optionally creates extra empty frames until no format fits.",
     "help.formatMinMax": "Min/Max: 0 = unlimited",
     "ui.minMax": "Min: {min}, Max: {max}",
 
@@ -355,6 +448,22 @@ function applyLanguageToUI() {
   setTextById("label-formats-define", "label.formatsDefine");
   setTextById("label-format-add", "label.formatAdd");
   setTextById("help-format-minmax", "help.formatMinMax");
+  setTextById("label-allow-empty-frames", "label.allowEmptyFrames");
+  setTextById("help-allow-empty-frames", "help.allowEmptyFrames");
+  setTextById("label-scale-formats-to-fit", "label.scaleFormatsToFit");
+  setTextById("help-scale-formats-to-fit", "help.scaleFormatsToFit");
+  setTextById("label-multi-layout-style", "label.multiLayoutStyle");
+
+  const optGrid = document.querySelector('#multi-layout-style option[value="grid"]');
+  if (optGrid) optGrid.textContent = t('ui.layout.grid');
+  const optMasonry = document.querySelector('#multi-layout-style option[value="masonry"]');
+  if (optMasonry) optMasonry.textContent = t('ui.layout.masonry');
+
+  setTextById('label-masonry-settings', 'label.masonrySettings');
+  setTextById('label-masonry-cols', 'label.masonryCols');
+  setTextById('label-masonry-seed', 'label.masonrySeed');
+  setTextById('label-masonry-fill-page', 'label.masonryFillPage');
+  setTextById('help-masonry', 'help.masonry');
   setTextById("title-plugin-settings", "title.plugin");
   setTextById("help-distribute", "help.distribute");
   setTextById("help-distribute-scale", "help.distributeScale");
@@ -653,13 +762,22 @@ function appendLog(message) {
   }
   const logEl = document.getElementById("log-output");
   if (logEl) {
-    const text = logBuffer.join("\n");
-    if (logEl.tagName === "TEXTAREA") {
-      logEl.value = text;
-    } else {
-      logEl.textContent = text;
+    let prevScrollTop = 0;
+    try {
+      prevScrollTop = logEl.scrollTop;
+    } catch (_) {
+      // ignore
     }
-    logEl.scrollTop = logEl.scrollHeight;
+
+    const text = logBuffer.join("\n");
+    logEl.textContent = text;
+
+    try {
+      if (logAutoScrollEnabled) logEl.scrollTop = logEl.scrollHeight;
+      else logEl.scrollTop = prevScrollTop;
+    } catch (_) {
+      // ignore
+    }
   }
 }
 
@@ -693,12 +811,9 @@ function clearLog() {
   logBuffer.length = 0;
   const logEl = document.getElementById("log-output");
   if (logEl) {
-    if (logEl.tagName === "TEXTAREA") {
-      logEl.value = "Log geleert.";
-    } else {
-      logEl.textContent = "Log geleert.";
-    }
+    logEl.textContent = "Log geleert.";
   }
+  logAutoScrollEnabled = true;
 }
 
 async function copyLogToClipboard() {
@@ -728,12 +843,11 @@ async function copyLogToClipboard() {
 /**
  * Holt die aktuelle Seite
  */
-function getCurrentPage() {
-  if (!app || !app.activeDocument) {
+function getCurrentPage(docArg = null) {
+  const doc = docArg || getActiveDocumentSafe();
+  if (!doc) {
     throw new Error("Kein aktives Dokument");
   }
-
-  const doc = app.activeDocument;
   const layoutWindows = (doc && doc.layoutWindows) || [];
 
   // 1) Aktive Seite des ersten LayoutWindows
@@ -763,8 +877,8 @@ function getCurrentPage() {
 /**
  * Holt die Seitenränder (bounds)
  */
-function getPageBounds(page) {
-  const doc = app && app.activeDocument;
+function getPageBounds(page, docArg = null) {
+  const doc = docArg || getActiveDocumentSafe();
   if (!doc) {
     throw new Error("Kein aktives Dokument");
   }
@@ -971,6 +1085,16 @@ function findOptimalLayoutWithFormats(itemCount, formats, availableWidth, availa
     throw new Error(`Maximum-Beschränkungen (∑max=${totalMax}) unterschreiten Objekt-Anzahl (${itemCount})`);
   }
 
+  // Quick sanity: each format must fit at least once (1x1 grid)
+  for (const fmt of formats) {
+    const fw = Number(fmt.width) || 0;
+    const fh = Number(fmt.height) || 0;
+    if (fw <= 0 || fh <= 0) continue;
+    if (fw + spacing * 2 > availableWidth || fh + spacing * 2 > availableHeight) {
+      throw new Error(`Format ${fw}x${fh}mm passt nicht in den Bereich (${availableWidth.toFixed(2)}x${availableHeight.toFixed(2)}mm) bei spacing=${spacing}`);
+    }
+  }
+
   // Versuche verschiedene Anordnungen und wähle beste
   let bestLayout = null;
   let bestScore = Infinity;
@@ -1042,12 +1166,12 @@ function distributeFormats(itemCount, formats) {
 
 function scoreLayout(distribution, cols, rows, availableWidth, availableHeight, spacing) {
   // Vereinfachtes Scoring: Berechne ob Layout passt
-  // Gruppiere nach Format und berechne durchschnittliche Größe
-  const avgWidth = distribution.reduce((sum, f) => sum + f.width, 0) / distribution.length;
-  const avgHeight = distribution.reduce((sum, f) => sum + f.height, 0) / distribution.length;
+  // Use worst-case cell size to avoid overlaps with variable formats
+  const maxWidth = Math.max(...distribution.map(f => Number(f.width) || 0), 0);
+  const maxHeight = Math.max(...distribution.map(f => Number(f.height) || 0), 0);
 
-  const totalWidth = avgWidth * cols + spacing * (cols + 1);
-  const totalHeight = avgHeight * rows + spacing * (rows + 1);
+  const totalWidth = maxWidth * cols + spacing * (cols + 1);
+  const totalHeight = maxHeight * rows + spacing * (rows + 1);
 
   if (totalWidth > availableWidth || totalHeight > availableHeight) {
     return null; // Passt nicht
@@ -1186,12 +1310,11 @@ async function renderTemplates() {
 
 async function applyResize() {
   try {
-    if (!app || !app.activeDocument) {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
       showMessage(t('msg.noActiveDocument'), true);
       return;
     }
-
-    const doc = app.activeDocument;
 
     const selection = doc.selection;
     if (!selection || selection.length === 0) {
@@ -1278,12 +1401,11 @@ async function applyResize() {
 
 async function applyDistribute() {
   try {
-    if (!app || !app.activeDocument) {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
       showMessage(t('msg.noActiveDocument'), true);
       return;
     }
-
-    const doc = app.activeDocument;
 
     const selection = doc.selection;
     if (!selection || selection.length === 0) {
@@ -1331,8 +1453,8 @@ async function applyDistribute() {
       distributionBounds = getSelectionBounds(items);
       appendLog(`Verteilen in Auswahl-Bounds: ${boundsToText(distributionBounds)}`);
     } else {
-      const page = getCurrentPage();
-      distributionBounds = getPageBounds(page);
+      const page = getCurrentPage(doc);
+      distributionBounds = getPageBounds(page, doc);
       appendLog(`Verteilen auf Seite: ${boundsToText(distributionBounds)}`);
     }
 
@@ -1441,12 +1563,11 @@ async function applyDistributeScale() {
   const areaMode = getCheckedRadioValue('scale-distribution-area', 'page');
   const formatMode = getCheckedRadioValue('format-mode', 'single');
   try {
-    if (!app || !app.activeDocument) {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
       showMessage(t('msg.noActiveDocument'), true);
       return;
     }
-
-    const doc = app.activeDocument;
 
     const selection = doc.selection;
     if (!selection || selection.length === 0) {
@@ -1501,8 +1622,8 @@ async function applyDistributeScale() {
       distributionBounds = getSelectionBounds(items);
       appendLog(`Verteilen & Skalieren in Auswahl-Bounds: ${boundsToText(distributionBounds)}`);
     } else {
-      const page = getCurrentPage();
-      distributionBounds = getPageBounds(page);
+      const page = getCurrentPage(doc);
+      distributionBounds = getPageBounds(page, doc);
       appendLog(`Verteilen & Skalieren auf Seite: ${boundsToText(distributionBounds)}`);
     }
 
@@ -1511,31 +1632,101 @@ async function applyDistributeScale() {
     // Prüfe Format-Modus
     const formatMode = getCheckedRadioValue('format-mode', 'single');
 
+    const layoutStyleEl = document.getElementById('multi-layout-style');
+    const multiLayoutStyle = layoutStyleEl ? layoutStyleEl.value : (pluginSettings.multiLayoutStyle || 'grid');
+
+    const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
+    const allowEmptyFrames = allowEmptyFramesEl ? !!allowEmptyFramesEl.checked : !!pluginSettings.allowEmptyFrames;
+
     if (formatMode === 'multi' && (!definedFormats || definedFormats.length === 0)) {
       showMessage(t('msg.noFormatsDefined'), true);
       return;
     }
 
+    if (formatMode === 'multi' && !scaleFrame) {
+      const msg = 'Multi-Format benötigt "Rahmen" aktiviert (sonst können die Formatgrößen nicht angewendet werden).';
+      showMessage(msg, true);
+      appendLog(`❌ ${msg}`);
+      return;
+    }
+
     let cols, rows, formatAssignments;
+    let formatsForLayout = null;
+
+    const originalItemCount = items.length;
+    let targetCount = originalItemCount;
 
     if (formatMode === 'multi' && definedFormats.length > 0) {
       // Multi-Format Modus
       appendLog(`Multi-Format Modus: ${definedFormats.length} Format(e) definiert`);
 
-      try {
-        const layout = findOptimalLayoutWithFormats(
-          items.length,
-          definedFormats,
-          distributionBounds.width,
-          distributionBounds.height,
-          spacing
+      // Option: scale formats down to fit the area (solves oversized formats like 400x400 on A4)
+      const scaleToFitEl = document.getElementById('scale-formats-to-fit');
+      const scaleFormatsToFit = scaleToFitEl ? !!scaleToFitEl.checked : !!pluginSettings.scaleFormatsToFit;
+
+      formatsForLayout = definedFormats;
+      if (scaleFormatsToFit) {
+        const maxW = Math.max(...definedFormats.map(f => Number(f.width) || 0), 0);
+        const maxH = Math.max(...definedFormats.map(f => Number(f.height) || 0), 0);
+        const fitW = (distributionBounds.width - spacing * 2);
+        const fitH = (distributionBounds.height - spacing * 2);
+        const s = Math.min(
+          maxW > 0 ? (fitW / maxW) : 1,
+          maxH > 0 ? (fitH / maxH) : 1,
+          1
         );
 
-        cols = layout.cols;
-        rows = layout.rows;
-        formatAssignments = layout.distribution;
+        if (s > 0 && s < 1) {
+          formatsForLayout = definedFormats.map(f => ({
+            ...f,
+            width: (Number(f.width) || 0) * s,
+            height: (Number(f.height) || 0) * s
+          }));
+          appendLog(`Multi-Format: Formate skaliert (factor=${s.toFixed(3)}) um in den Bereich zu passen`);
+        }
+      }
 
-        appendLog(`Optimales Layout: ${cols}x${rows}, Score=${layout.score.toFixed(3)}`);
+      const totalMin = definedFormats.reduce((sum, f) => sum + (parseInt(f.min, 10) || 0), 0);
+      if (totalMin > originalItemCount && !allowEmptyFrames) {
+        const msg = `Multi-Format: ∑Min=${totalMin} ist größer als Auswahl (${originalItemCount}). Aktiviere "Leere Rahmen erlauben" oder reduziere Min.`;
+        showMessage(msg, true);
+        appendLog(`❌ ${msg}`);
+        return;
+      }
+
+      if (allowEmptyFrames) {
+        targetCount = Math.max(originalItemCount, totalMin);
+        if (targetCount > originalItemCount) {
+          appendLog(`Leere Rahmen erlaubt: Zielanzahl Frames=${targetCount} (Auswahl=${originalItemCount}, ∑Min=${totalMin})`);
+        }
+      }
+
+      try {
+        if (multiLayoutStyle === 'masonry') {
+          // Masonry does not require a strict grid fit; just generate an assignment list.
+          const distribution = distributeFormats(targetCount, formatsForLayout);
+          if (!distribution) {
+            throw new Error('Keine gültige Verteilung möglich (prüfe Max-Werte: ∑max muss ≥ Auswahl sein oder setze Max=0 für unbegrenzt).');
+          }
+          cols = 1;
+          rows = distribution.length;
+          formatAssignments = distribution;
+          appendLog(`Masonry: Assignments erzeugt (${distribution.length}) (Grid-Optimierung übersprungen)`);
+        } else {
+          const layout = findOptimalLayoutWithFormats(
+            targetCount,
+            formatsForLayout,
+            distributionBounds.width,
+            distributionBounds.height,
+            spacing
+          );
+
+          cols = layout.cols;
+          rows = layout.rows;
+          formatAssignments = layout.distribution;
+
+          appendLog(`Optimales Layout: ${cols}x${rows}, Score=${layout.score.toFixed(3)}`);
+        }
       } catch (err) {
         const msg = t('msg.multiFormatError', { message: formatErrorMessage(err) });
         showMessage(msg, true);
@@ -1572,16 +1763,159 @@ async function applyDistributeScale() {
     }
 
     // Verteile und skaliere Objekte (Frame + optional Inhalt)
+    let slotCount = formatAssignments ? formatAssignments.length : items.length;
+    let createdEmpty = 0;
+
+    const createEmptyFrame = () => {
+      const page = getCurrentPage(doc);
+      try {
+        if (page && page.rectangles && typeof page.rectangles.add === 'function') {
+          return page.rectangles.add();
+        }
+      } catch (_) {
+        // ignore
+      }
+      try {
+        if (doc && doc.rectangles && typeof doc.rectangles.add === 'function') {
+          return doc.rectangles.add();
+        }
+      } catch (_) {
+        // ignore
+      }
+      throw new Error('Leere Rahmen konnten nicht erstellt werden (rectangles.add nicht verfügbar).');
+    };
+
+    // In multi-format mode we place items either in a grid or using a masonry column algorithm.
+    let cellW = defaultItemWidth;
+    let cellH = defaultItemHeight;
+    if (formatMode === 'multi') {
+      const wFromAssignments = formatAssignments && formatAssignments.length > 0
+        ? Math.max(...formatAssignments.map(f => f.width || 0), 0)
+        : 0;
+      const hFromAssignments = formatAssignments && formatAssignments.length > 0
+        ? Math.max(...formatAssignments.map(f => f.height || 0), 0)
+        : 0;
+      const wFromFormats = formatsForLayout && formatsForLayout.length > 0
+        ? Math.max(...formatsForLayout.map(f => f.width || 0), 0)
+        : 0;
+      const hFromFormats = formatsForLayout && formatsForLayout.length > 0
+        ? Math.max(...formatsForLayout.map(f => f.height || 0), 0)
+        : 0;
+      cellW = Math.max(cellW, wFromAssignments, wFromFormats);
+      cellH = Math.max(cellH, hFromAssignments, hFromFormats);
+    }
+
+    const boundsBottom = distributionBounds.top + distributionBounds.height;
+    const boundsRight = distributionBounds.left + distributionBounds.width;
+
+    const fmtKey = (f) => `${Number(f.width || 0).toFixed(4)}x${Number(f.height || 0).toFixed(4)}`;
+
+    // Masonry settings (DOM wins over persisted settings)
+    const masonryColsEl = document.getElementById('masonry-cols');
+    const masonrySeedEl = document.getElementById('masonry-seed');
+    const masonryFillEl = document.getElementById('masonry-fill-page');
+    const masonrySeed = (masonrySeedEl ? masonrySeedEl.value : (pluginSettings.masonrySeed || '')).trim();
+    const masonryFillPage = masonryFillEl ? !!masonryFillEl.checked : !!pluginSettings.masonryFillPage;
+    const masonryColsRequested = (() => {
+      const raw = masonryColsEl ? parseInt(masonryColsEl.value, 10) : parseInt(pluginSettings.masonryCols, 10);
+      return Number.isFinite(raw) && raw > 0 ? raw : 3;
+    })();
+
     let index = 0;
-    for (let row = 0; row < rows && index < items.length; row++) {
-      for (let col = 0; col < cols && index < items.length; col++) {
-        const item = items[index];
-        const obj = item.object;
-        const currentBounds = item.bounds;
+    if (formatMode === 'multi' && multiLayoutStyle === 'masonry') {
+      if (formatAssignments && masonrySeed) {
+        formatAssignments = seededShuffle([...formatAssignments], masonrySeed);
+      }
+
+      const colW = cellW + spacing;
+      const maxColsByWidth = Math.max(1, Math.floor((distributionBounds.width + spacing) / colW));
+      const masonryCols = Math.min(Math.max(1, masonryColsRequested), maxColsByWidth);
+      const heights = new Array(masonryCols).fill(0);
+
+      appendLog(`Masonry: cols=${masonryCols}/${masonryColsRequested} (max ${maxColsByWidth}), seed="${masonrySeed}", fillPage=${masonryFillPage}, allowEmptyFrames=${allowEmptyFrames}`);
+
+      const pickBestCol = () => {
+        let bestCol = 0;
+        for (let c = 1; c < heights.length; c++) {
+          if (heights[c] < heights[bestCol]) bestCol = c;
+        }
+        return bestCol;
+      };
+
+      const placeMasonry = (w, h) => {
+        const bestCol = pickBestCol();
+        const cellLeft = distributionBounds.left + spacing + bestCol * colW;
+        const cellTop = distributionBounds.top + spacing + heights[bestCol];
+        const newLeft = cellLeft + (cellW - w) / 2;
+        const newTop = cellTop;
+        const newRight = newLeft + w;
+        const newBottom = newTop + h;
+
+        // keep a bottom margin = spacing
+        if (newBottom > boundsBottom - spacing) return null;
+        if (newRight > boundsRight - spacing) return null;
+
+        heights[bestCol] += (h + spacing);
+        return { newLeft, newTop };
+      };
+
+      const counts = new Map();
+      if (formatAssignments) {
+        for (const f of formatAssignments) {
+          const k = fmtKey(f);
+          counts.set(k, (counts.get(k) || 0) + 1);
+        }
+      }
+
+      const seedRand = masonrySeed ? mulberry32(xmur3(masonrySeed)()) : null;
+
+      const pickAdditionalFormat = () => {
+        const bestCol = pickBestCol();
+        const maxH = (distributionBounds.height - (2 * spacing)) - heights[bestCol];
+        if (maxH <= 0) return null;
+
+        const candidates = (formatsForLayout || [])
+          .filter(f => {
+            const k = fmtKey(f);
+            const max = f.max;
+            if (max === undefined || max === null || isNaN(max)) return true;
+            return (counts.get(k) || 0) < max;
+          })
+          .filter(f => (f.height || 0) <= maxH);
+
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => (a.height - b.height) || (a.width - b.width));
+
+        // pick among the smallest few for variety (seeded)
+        const pickPoolSize = Math.min(3, candidates.length);
+        const chosen = seedRand
+          ? candidates[Math.floor(seedRand() * pickPoolSize)]
+          : candidates[0];
+
+        const k = fmtKey(chosen);
+        counts.set(k, (counts.get(k) || 0) + 1);
+        return { width: chosen.width, height: chosen.height };
+      };
+
+      // Masonry main loop, optionally extending with fill-page (requires empty frame creation)
+      while (index < slotCount) {
+        let item = items[index];
+        let obj = item && item.object;
+
+        if (!obj) {
+          if (allowEmptyFrames) {
+            obj = createEmptyFrame();
+            createdEmpty++;
+            item = { object: obj, width: 0, height: 0, bounds: obj.geometricBounds };
+            items[index] = item;
+          } else {
+            break;
+          }
+        }
+
         const before = getBoundsData(obj);
         const label = obj && typeof obj.id !== "undefined" ? `ID ${obj.id}` : `Index ${index}`;
 
-        // Bestimme Größe für dieses Objekt
         let itemWidth, itemHeight;
         if (formatAssignments && formatAssignments[index]) {
           itemWidth = formatAssignments[index].width;
@@ -1592,38 +1926,102 @@ async function applyDistributeScale() {
           itemHeight = defaultItemHeight;
         }
 
-        // Berechne neue Position
-        const newLeft = distributionBounds.left + spacing + col * (defaultItemWidth + spacing);
-        const newTop = distributionBounds.top + spacing + row * (defaultItemHeight + spacing);
+        const pos = placeMasonry(itemWidth, itemHeight);
+        if (!pos) break;
 
-        // Skalieren (Frame/Content) mit derselben Logik wie Größenzuweisung
         resizeItem(obj, itemWidth, itemHeight, {
           scaleFrame,
           scaleContent,
-          keepCenter: false // Nicht zentrieren, da wir Position setzen
+          keepCenter: false
         });
 
-        // Danach an Zielposition schieben MIT Content
-        const b2 = obj.geometricBounds;
-        const offsetX = newLeft - b2[1];
-        const offsetY = newTop - b2[0];
-
-        // Setze Position direkt (move() ist in InDesign UXP nicht zuverlässig)
         obj.geometricBounds = [
-          b2[0] + offsetY,
-          b2[1] + offsetX,
-          b2[2] + offsetY,
-          b2[3] + offsetX
+          pos.newTop,
+          pos.newLeft,
+          pos.newTop + itemHeight,
+          pos.newLeft + itemWidth
         ];
 
         const after = getBoundsData(obj);
-        appendLog(`Verteilen & Skalieren -> ${label}: Start ${boundsToText(before)} | Ziel w=${itemWidth.toFixed(2)}, h=${itemHeight.toFixed(2)}, pos x=${newLeft.toFixed(2)}, y=${newTop.toFixed(2)} | Result ${boundsToText(after)}`);
+        appendLog(`Verteilen & Skalieren -> ${label}: Start ${boundsToText(before)} | Ziel w=${itemWidth.toFixed(2)}, h=${itemHeight.toFixed(2)}, pos x=${pos.newLeft.toFixed(2)}, y=${pos.newTop.toFixed(2)} | Result ${boundsToText(after)}`);
 
         index++;
+
+        if (masonryFillPage && allowEmptyFrames && formatAssignments && index >= slotCount) {
+          const extra = pickAdditionalFormat();
+          if (!extra) {
+            break;
+          }
+          formatAssignments.push(extra);
+          slotCount++;
+        }
+      }
+    } else {
+      for (let row = 0; row < rows && index < slotCount; row++) {
+        for (let col = 0; col < cols && index < slotCount; col++) {
+          let item = items[index];
+          let obj = item && item.object;
+
+          if (!obj) {
+            if (formatMode === 'multi' && allowEmptyFrames) {
+              obj = createEmptyFrame();
+              createdEmpty++;
+              item = { object: obj, width: 0, height: 0, bounds: obj.geometricBounds };
+              items[index] = item;
+            } else {
+              break;
+            }
+          }
+
+          const before = getBoundsData(obj);
+          const label = obj && typeof obj.id !== "undefined" ? `ID ${obj.id}` : `Index ${index}`;
+
+          // Bestimme Größe für dieses Objekt
+          let itemWidth, itemHeight;
+          if (formatAssignments && formatAssignments[index]) {
+            itemWidth = formatAssignments[index].width;
+            itemHeight = formatAssignments[index].height;
+            appendLog(`  -> Format: ${itemWidth}x${itemHeight}mm`);
+          } else {
+            itemWidth = defaultItemWidth;
+            itemHeight = defaultItemHeight;
+          }
+
+          // Berechne neue Position (cell-based, to avoid overlaps with variable format sizes)
+          const cellLeft = distributionBounds.left + spacing + col * (cellW + spacing);
+          const cellTop = distributionBounds.top + spacing + row * (cellH + spacing);
+          const newLeft = cellLeft + (cellW - itemWidth) / 2;
+          const newTop = cellTop + (cellH - itemHeight) / 2;
+
+          // Skalieren (Frame/Content) mit derselben Logik wie Größenzuweisung
+          resizeItem(obj, itemWidth, itemHeight, {
+            scaleFrame,
+            scaleContent,
+            keepCenter: false // Nicht zentrieren, da wir Position setzen
+          });
+
+          // Setze Position direkt (move() ist in InDesign UXP nicht zuverlässig)
+          // (Multi-Format requires scaleFrame=true; we already enforce that above.)
+          obj.geometricBounds = [
+            newTop,
+            newLeft,
+            newTop + itemHeight,
+            newLeft + itemWidth
+          ];
+
+          const after = getBoundsData(obj);
+          appendLog(`Verteilen & Skalieren -> ${label}: Start ${boundsToText(before)} | Ziel w=${itemWidth.toFixed(2)}, h=${itemHeight.toFixed(2)}, pos x=${newLeft.toFixed(2)}, y=${newTop.toFixed(2)} | Result ${boundsToText(after)}`);
+
+          index++;
+        }
       }
     }
 
-    showMessage(t('msg.distributedScaled', { count: items.length }));
+    if (createdEmpty > 0) {
+      appendLog(`Leere Rahmen erstellt: ${createdEmpty}`);
+    }
+
+    showMessage(t('msg.distributedScaled', { count: index }));
 
   } catch (error) {
     showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(error) }), true);
@@ -1677,8 +2075,8 @@ function initPanel() {
 
   // Ensure log isn't stuck on the HTML placeholder
   const logEl = document.getElementById('log-output');
-  if (logEl && logEl.tagName === 'TEXTAREA' && logBuffer.length === 0) {
-    logEl.value = '';
+  if (logEl && logBuffer.length === 0) {
+    if (String(logEl.textContent || '').trim() === 'Log bereit…') logEl.textContent = '';
   }
 
   const gridSettingsEl = document.getElementById('grid-settings');
@@ -1836,6 +2234,13 @@ function initPanel() {
   const toggleLog = document.getElementById('setting-log-enabled');
   const togglePopups = document.getElementById('setting-popups-enabled');
   const selectLanguage = document.getElementById('setting-language');
+  const toggleAllowEmptyFrames = document.getElementById('allow-empty-frames');
+  const toggleScaleFormatsToFit = document.getElementById('scale-formats-to-fit');
+  const selectMultiLayoutStyle = document.getElementById('multi-layout-style');
+  const masonrySettingsEl = document.getElementById('masonry-settings');
+  const inputMasonryCols = document.getElementById('masonry-cols');
+  const inputMasonrySeed = document.getElementById('masonry-seed');
+  const toggleMasonryFillPage = document.getElementById('masonry-fill-page');
 
   const setLogEnabled = (enabled) => {
     const next = !!enabled;
@@ -1945,6 +2350,64 @@ function initPanel() {
     });
   }
 
+  if (toggleAllowEmptyFrames) {
+    toggleAllowEmptyFrames.addEventListener('change', () => {
+      pluginSettings.allowEmptyFrames = !!toggleAllowEmptyFrames.checked;
+      appendLog(`UI: allowEmptyFrames=${!!pluginSettings.allowEmptyFrames}`);
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (toggleScaleFormatsToFit) {
+    toggleScaleFormatsToFit.addEventListener('change', () => {
+      pluginSettings.scaleFormatsToFit = !!toggleScaleFormatsToFit.checked;
+      appendLog(`UI: scaleFormatsToFit=${!!pluginSettings.scaleFormatsToFit}`);
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (selectMultiLayoutStyle) {
+    selectMultiLayoutStyle.addEventListener('change', () => {
+      pluginSettings.multiLayoutStyle = selectMultiLayoutStyle.value;
+      appendLog(`UI: multiLayoutStyle=${pluginSettings.multiLayoutStyle}`);
+      setVisible(masonrySettingsEl, pluginSettings.multiLayoutStyle === 'masonry', 'block');
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (logEl) {
+    logEl.addEventListener('scroll', () => {
+      try {
+        const threshold = 12;
+        logAutoScrollEnabled = (logEl.scrollTop + logEl.clientHeight) >= (logEl.scrollHeight - threshold);
+      } catch (_) {
+        // ignore
+      }
+    });
+  }
+
+  if (inputMasonryCols) {
+    inputMasonryCols.addEventListener('input', () => {
+      const v = parseInt(inputMasonryCols.value, 10);
+      pluginSettings.masonryCols = Number.isFinite(v) && v > 0 ? v : 3;
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (inputMasonrySeed) {
+    inputMasonrySeed.addEventListener('input', () => {
+      pluginSettings.masonrySeed = String(inputMasonrySeed.value || '');
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (toggleMasonryFillPage) {
+    toggleMasonryFillPage.addEventListener('change', () => {
+      pluginSettings.masonryFillPage = !!toggleMasonryFillPage.checked;
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
   // Proportion lock button
   const lockBtn = document.getElementById('lock-proportion');
   lockBtn.addEventListener('click', () => {
@@ -2019,11 +2482,11 @@ function initPanel() {
   if (centerContentBtn) {
     centerContentBtn.addEventListener('click', async () => {
       try {
-        if (!app || !app.activeDocument) {
+        const doc = getActiveDocumentSafe();
+        if (!doc) {
           showMessage(t('msg.noActiveDocument'), true);
           return;
         }
-        const doc = app.activeDocument;
         if (!doc || !doc.selection || doc.selection.length === 0) {
           showMessage(t('msg.noSelection'), true);
           return;
@@ -2069,11 +2532,11 @@ function initPanel() {
   if (scaleToFrameBtn) {
     scaleToFrameBtn.addEventListener('click', async () => {
       try {
-        if (!app || !app.activeDocument) {
+        const doc = getActiveDocumentSafe();
+        if (!doc) {
           showMessage(t('msg.noActiveDocument'), true);
           return;
         }
-        const doc = app.activeDocument;
         if (!doc || !doc.selection || doc.selection.length === 0) {
           showMessage(t('msg.noSelection'), true);
           return;
@@ -2197,6 +2660,13 @@ function initPanel() {
 
     if (toggleLog) toggleLog.checked = !!pluginSettings.logEnabled;
     if (togglePopups) togglePopups.checked = !!pluginSettings.popupsEnabled;
+    if (toggleAllowEmptyFrames) toggleAllowEmptyFrames.checked = !!pluginSettings.allowEmptyFrames;
+    if (toggleScaleFormatsToFit) toggleScaleFormatsToFit.checked = !!pluginSettings.scaleFormatsToFit;
+    if (selectMultiLayoutStyle) selectMultiLayoutStyle.value = pluginSettings.multiLayoutStyle || 'grid';
+    if (inputMasonryCols) inputMasonryCols.value = String(pluginSettings.masonryCols ?? 3);
+    if (inputMasonrySeed) inputMasonrySeed.value = String(pluginSettings.masonrySeed ?? '');
+    if (toggleMasonryFillPage) toggleMasonryFillPage.checked = !!pluginSettings.masonryFillPage;
+    setVisible(masonrySettingsEl, (pluginSettings.multiLayoutStyle || 'grid') === 'masonry', 'block');
     if (selectLanguage) selectLanguage.value = getLanguage();
 
     if (pluginSettings.ui) {

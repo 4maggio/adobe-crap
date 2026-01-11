@@ -213,16 +213,16 @@
       margin: 0;
     }
 
-    .tab-content > * + * {
+    .tab-content>*+* {
       margin-top: var(--ui-gap);
     }
 
-    .form-group > * + * {
+    .form-group>*+* {
       margin-top: 6px;
     }
 
-    .checkbox-item + .checkbox-item,
-    .radio-item + .radio-item {
+    .checkbox-item+.checkbox-item,
+    .radio-item+.radio-item {
       margin-top: 8px;
     }
 
@@ -296,13 +296,13 @@
       margin-top: 8px;
     }
 
-    .button-group > button {
+    .button-group>button {
       flex: 1 1 auto;
       min-width: 140px;
     }
 
     /* Main actions look better full-width in panel layouts */
-    .button-group > .btn-primary {
+    .button-group>.btn-primary {
       flex: 1 1 100%;
       min-width: 0;
     }
@@ -546,11 +546,15 @@
       background: var(--uxp-color-surface-secondary, #fafafa);
       font-family: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
       font-size: 10px;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      overflow: auto;
       overflow-y: auto;
       white-space: pre;
-      resize: none;
       min-height: 120px;
       color: var(--uxp-color-text-primary, #323232);
+      user-select: text;
     }
 
     #log-container {
@@ -830,6 +834,54 @@
           <button class="btn-secondary btn-small" id="cancel-edit-format-btn" hidden>Abbrechen</button>
           <button class="btn-secondary btn-small" id="clear-formats-btn">Alle löschen</button>
         </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <div class="checkbox-item">
+              <input type="checkbox" id="allow-empty-frames">
+              <label for="allow-empty-frames" id="label-allow-empty-frames">Leere Rahmen erlauben</label>
+            </div>
+          </div>
+          <div class="helper-text" id="help-allow-empty-frames">Erstellt zusätzliche leere Rahmen, wenn die Summe der
+            Min-Werte größer ist als die Auswahl.</div>
+        </div>
+
+        <div class="form-group">
+          <div class="checkbox-group">
+            <div class="checkbox-item">
+              <input type="checkbox" id="scale-formats-to-fit">
+              <label for="scale-formats-to-fit" id="label-scale-formats-to-fit">Formate automatisch an Seite anpassen</label>
+            </div>
+          </div>
+          <div class="helper-text" id="help-scale-formats-to-fit">Skaliert alle Multi-Formate proportional herunter, damit das größte Format in den Bereich passt.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="multi-layout-style" id="label-multi-layout-style">Layout-Stil</label>
+          <select id="multi-layout-style">
+            <option value="grid">Raster</option>
+            <option value="masonry">Masonry (Spalten)</option>
+          </select>
+        </div>
+
+        <div id="masonry-settings" class="form-group" hidden>
+          <label id="label-masonry-settings">Masonry Einstellungen</label>
+          <div class="form-row">
+            <input type="number" id="masonry-cols" class="input-small" placeholder="Spalten" min="1" value="3">
+            <span class="unit-label" id="label-masonry-cols">Spalten</span>
+          </div>
+          <div class="form-row">
+            <input type="text" id="masonry-seed" class="input-small" placeholder="Seed">
+            <span class="unit-label" id="label-masonry-seed">Seed</span>
+          </div>
+          <div class="checkbox-group">
+            <div class="checkbox-item">
+              <input type="checkbox" id="masonry-fill-page">
+              <label for="masonry-fill-page" id="label-masonry-fill-page">Seite auffüllen</label>
+            </div>
+          </div>
+          <div class="helper-text" id="help-masonry">Füllt spaltenweise von oben nach unten. Optional werden zusätzliche leere Rahmen erstellt, bis kein Format mehr passt.</div>
+        </div>
       </div>
       <div class="divider"></div>
       <div class="form-group">
@@ -947,7 +999,7 @@
         <button class="btn-secondary btn-small" id="clear-log-btn">Log löschen</button>
         <div id="ui-build-stamp" class="helper-text" style="margin-left:auto;">build 2026-01-11-UI-INIT-2</div>
       </div>
-      <textarea id="log-output" class="log-panel" aria-live="polite" tabindex="0" readonly>Log bereit…</textarea>
+      <div id="log-output" class="log-panel" role="log" aria-live="polite" tabindex="0">Log bereit…</div>
     </div>
 
   </div>
