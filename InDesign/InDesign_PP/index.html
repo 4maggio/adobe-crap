@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="main.js"></script>
+
+  <style>
+    :root {
+      --ui-font-size: 11px;
+      --ui-gap: 8px;
+      --ui-padding: 12px;
+      --ui-divider-margin: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: adobe-clean, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: var(--ui-font-size);
+      overflow: hidden;
+      background: var(--uxp-color-surface-primary, #f5f5f5);
+      color: var(--uxp-color-text-primary, #323232);
+    }
+
+    /* Auto Dark Mode Support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: var(--uxp-color-surface-primary, #2c2c2c);
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      min-height: 0;
+    }
+
+    /* Modern Tabs */
+    .tabs {
+      display: flex;
+      background: var(--uxp-color-surface-gray-200, #e8e8e8);
+      border-bottom: 1px solid var(--uxp-color-divider, #d3d3d3);
+      padding: 4px;
+      flex-wrap: wrap;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tabs {
+        background: var(--uxp-color-surface-gray-800, #3a3a3a);
+        border-bottom-color: var(--uxp-color-divider, #4a4a4a);
+      }
+    }
+
+    .tab {
+      flex: 1;
+      min-width: 70px;
+      padding: 8px 6px;
+      text-align: center;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--uxp-color-text-primary, #323232);
+      font-size: var(--ui-font-size);
+      transition: all 0.15s;
+      border-radius: 4px;
+      font-weight: 400;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tab {
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    .tab:hover {
+      background: var(--uxp-color-surface-gray-300, #d3d3d3);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tab:hover {
+        background: var(--uxp-color-surface-gray-700, #4a4a4a);
+      }
+    }
+
+    .tab.active {
+      background: var(--uxp-color-accent, #2680eb);
+      color: white;
+      font-weight: 600;
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      padding: var(--ui-padding);
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Form Groups */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-weight: 500;
+      font-size: var(--ui-font-size);
+      color: var(--uxp-color-text-primary, #323232);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .form-group label {
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    .form-row {
+      display: flex;
+      gap: var(--ui-gap);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Native Inputs (Spectrum als primary, native als fallback) */
+    input[type="text"],
+    input[type="number"],
+    select {
+      padding: 6px 8px;
+      border: 1px solid var(--uxp-color-divider, #d3d3d3);
+      border-radius: 4px;
+      background: var(--uxp-color-surface-primary, white);
+      color: var(--uxp-color-text-primary, #323232);
+      font-size: var(--ui-font-size);
+      font-family: inherit;
+    }
+
+    @media (prefers-color-scheme: dark) {
+
+      input[type="text"],
+      input[type="number"],
+      select {
+        background: var(--uxp-color-surface-primary, #3a3a3a);
+        color: var(--uxp-color-text-primary, #e1e1e1);
+        border-color: var(--uxp-color-divider, #4a4a4a);
+      }
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--uxp-color-accent, #2680eb);
+    }
+
+    .input-small {
+      width: 100px;
+      max-width: none;
+    }
+
+    .input-unit {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .unit-label {
+      font-size: calc(var(--ui-font-size) - 1px);
+      color: var(--uxp-color-text-secondary, #6e6e6e);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .unit-label {
+        color: var(--uxp-color-text-secondary, #b4b4b4);
+      }
+    }
+
+    /* Checkbox/Radio Groups */
+    .checkbox-group,
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* UXP-safe spacing (avoid relying on flex gap support) */
+    p {
+      margin: 0;
+    }
+
+    .helper-text {
+      margin: 0;
+    }
+
+    .tab-content > * + * {
+      margin-top: var(--ui-gap);
+    }
+
+    .form-group > * + * {
+      margin-top: 6px;
+    }
+
+    .checkbox-item + .checkbox-item,
+    .radio-item + .radio-item {
+      margin-top: 8px;
+    }
+
+    .checkbox-item,
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: var(--ui-font-size);
+      font-weight: 500;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--uxp-color-accent, #2680eb);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--uxp-color-accent-hover, #1473e6);
+    }
+
+    .btn-primary:active {
+      background: var(--uxp-color-accent-active, #0d66d0);
+    }
+
+    .btn-secondary {
+      background: var(--uxp-color-surface-gray-300, #d3d3d3);
+      color: var(--uxp-color-text-primary, #323232);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .btn-secondary {
+        background: var(--uxp-color-surface-gray-700, #4a4a4a);
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    .btn-secondary:hover {
+      background: var(--uxp-color-surface-gray-400, #bcbcbc);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .btn-secondary:hover {
+        background: var(--uxp-color-surface-gray-600, #5a5a5a);
+      }
+    }
+
+    .btn-small {
+      padding: 5px 10px;
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .button-group > button {
+      flex: 1 1 auto;
+      min-width: 140px;
+    }
+
+    /* Main actions look better full-width in panel layouts */
+    .button-group > .btn-primary {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    /* Template List */
+    .template-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1px solid var(--uxp-color-divider, #d3d3d3);
+      border-radius: 4px;
+      background: var(--uxp-color-surface-secondary, #fafafa);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .template-list {
+        background: var(--uxp-color-surface-secondary, #323232);
+        border-color: var(--uxp-color-divider, #4a4a4a);
+      }
+    }
+
+    .template-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--uxp-color-surface-primary, white);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 2px solid transparent;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .template-item {
+        background: var(--uxp-color-surface-primary, #3a3a3a);
+      }
+    }
+
+    .template-item:hover {
+      background: var(--uxp-color-surface-gray-100, #f5f5f5);
+      border-color: var(--uxp-color-divider, #d3d3d3);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .template-item:hover {
+        background: var(--uxp-color-surface-gray-700, #4a4a4a);
+        border-color: var(--uxp-color-divider, #5a5a5a);
+      }
+    }
+
+    .template-item.selected {
+      background: var(--uxp-color-accent, #2680eb);
+      color: white;
+      border-color: var(--uxp-color-accent, #2680eb);
+    }
+
+    .template-name {
+      font-weight: 500;
+    }
+
+    .template-size {
+      font-size: 10px;
+      opacity: 0.8;
+    }
+
+    /* Format List (Multi-Format) */
+    .format-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1px solid var(--uxp-color-divider, #d3d3d3);
+      border-radius: 4px;
+      background: var(--uxp-color-surface-secondary, #fafafa);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .format-list {
+        background: var(--uxp-color-surface-secondary, #323232);
+        border-color: var(--uxp-color-divider, #4a4a4a);
+      }
+    }
+
+    .format-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--uxp-color-surface-primary, white);
+      border-radius: 4px;
+      border: 1px solid transparent;
+    }
+
+    .format-item.selected {
+      background: var(--uxp-color-accent, #2680eb);
+      color: white;
+      border-color: var(--uxp-color-accent, #2680eb);
+    }
+
+    .format-item.selected .format-delete {
+      background: rgba(255, 255, 255, 0.25);
+      color: white;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .format-item {
+        background: var(--uxp-color-surface-primary, #3a3a3a);
+      }
+    }
+
+    .format-specs {
+      font-weight: 500;
+      flex: 1 1 auto;
+      min-width: 120px;
+    }
+
+    .format-constraints {
+      font-size: 10px;
+      opacity: 0.85;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .format-delete {
+      padding: 6px 10px;
+      font-size: 14px;
+      line-height: 1;
+      background: var(--uxp-color-surface-gray-300, #d3d3d3);
+      color: var(--uxp-color-text-primary, #323232);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .format-delete {
+        background: var(--uxp-color-surface-gray-700, #4a4a4a);
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    .format-delete:hover {
+      background: var(--uxp-color-accent, #2680eb);
+      color: white;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--uxp-color-divider, #d3d3d3);
+      margin: var(--ui-divider-margin, 12px) 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .divider {
+        background: var(--uxp-color-divider, #4a4a4a);
+      }
+    }
+
+    /* Helper Text */
+    .helper-text {
+      font-size: calc(var(--ui-font-size) - 1px);
+      color: var(--uxp-color-text-secondary, #6e6e6e);
+      line-height: 1.4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .helper-text {
+        color: var(--uxp-color-text-secondary, #b4b4b4);
+      }
+    }
+
+    /* Section Title */
+    .section-title {
+      font-weight: 600;
+      font-size: calc(var(--ui-font-size) + 1px);
+      margin-bottom: 8px;
+      margin-top: 12px;
+      color: var(--uxp-color-text-primary, #323232);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .section-title {
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    /* Chain Button */
+    .chain-btn {
+      min-width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: var(--uxp-color-surface-gray-200, #e8e8e8);
+      border: 1px solid var(--uxp-color-divider, #d3d3d3);
+      border-radius: 4px;
+      font-size: 16px;
+      transition: all 0.15s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .chain-btn {
+        background: var(--uxp-color-surface-gray-700, #4a4a4a);
+        border-color: var(--uxp-color-divider, #5a5a5a);
+      }
+    }
+
+    .chain-btn:hover {
+      background: var(--uxp-color-surface-gray-300, #d3d3d3);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .chain-btn:hover {
+        background: var(--uxp-color-surface-gray-600, #5a5a5a);
+      }
+    }
+
+    .chain-btn.active {
+      background: var(--uxp-color-accent, #2680eb);
+      border-color: var(--uxp-color-accent, #2680eb);
+      color: white;
+    }
+
+    /* Log Panel */
+    .log-panel {
+      flex: none;
+      height: 140px;
+      padding: 8px;
+      border-top: 1px solid var(--uxp-color-divider, #d3d3d3);
+      background: var(--uxp-color-surface-secondary, #fafafa);
+      font-family: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 10px;
+      overflow-y: auto;
+      white-space: pre;
+      resize: none;
+      min-height: 120px;
+      color: var(--uxp-color-text-primary, #323232);
+    }
+
+    #log-container {
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .log-panel {
+        background: var(--uxp-color-surface-secondary, #1e1e1e);
+        border-top-color: var(--uxp-color-divider, #4a4a4a);
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+    }
+
+    .log-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 8px var(--ui-padding);
+      border-top: 1px solid var(--uxp-color-divider, #d3d3d3);
+      background: var(--uxp-color-surface-gray-200, #e8e8e8);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .log-actions {
+        background: var(--uxp-color-surface-gray-800, #3a3a3a);
+        border-top-color: var(--uxp-color-divider, #4a4a4a);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="resize">Größenzuweisung</button>
+      <button class="tab" data-tab="distribute">Verteilen</button>
+      <button class="tab" data-tab="distribute-scale">Verteilen & Skalieren</button>
+      <button class="tab" data-tab="tools">Tools</button>
+      <button class="tab" data-tab="settings">Einstellungen</button>
+    </div>
+
+    <!-- Tab 1: Resize -->
+    <div id="tab-resize" class="tab-content active">
+      <div class="form-group">
+        <label>Größe</label>
+        <div class="form-row">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <input type="number" id="resize-width" class="input-small" placeholder="Breite" step="0.1">
+            <span class="unit-label">mm</span>
+          </div>
+          <button class="chain-btn" id="lock-proportion" title="Proportionen sperren">🔗</button>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <input type="number" id="resize-height" class="input-small" placeholder="Höhe" step="0.1">
+            <span class="unit-label">mm</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Was skalieren?</label>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="resize-frame" checked>
+            <label for="resize-frame">Rahmen</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="resize-content" checked>
+            <label for="resize-content">Inhalt</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-title" id="title-templates">Templates</div>
+
+      <div class="form-group">
+        <div id="template-list" class="template-list">
+          <div class="helper-text">Keine Templates gespeichert</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Neues Template</label>
+        <input type="text" id="template-name" placeholder="z.B. Standard 6x4">
+      </div>
+
+      <div class="button-group">
+        <button class="btn-secondary" id="save-template-btn">Template speichern</button>
+        <button class="btn-secondary btn-small" id="delete-template-btn">Löschen</button>
+      </div>
+
+      <div class="button-group">
+        <button class="btn-primary" id="apply-resize-btn">Anwenden</button>
+      </div>
+    </div>
+
+    <!-- Tab 2: Distribute Without Scale -->
+    <div id="tab-distribute" class="tab-content">
+      <div class="form-group">
+        <p class="helper-text" id="help-distribute">Verteilt ausgewählte Elemente gleichmäßig auf dem Druckbogen mit
+          gleichen Abständen zwischen allen Elementen und zu den Seitenrändern.</p>
+      </div>
+      <div class="form-group">
+        <label>Richtung</label>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="distribute-horizontal" checked>
+            <label for="distribute-horizontal">Horizontal</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="distribute-vertical" checked>
+            <label for="distribute-vertical">Vertikal</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Abstand zwischen Elementen</label>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <input type="number" id="distribute-gap" class="input-small" placeholder="Gap" value="5" step="0.1" min="0">
+          <span class="unit-label">mm</span>
+        </div>
+        <div class="helper-text">Minimaler Abstand zwischen allen Elementen und zu den Seitenrändern</div>
+      </div>
+      <div class="form-group">
+        <label>Verteilungsbereich</label>
+        <div class="radio-group">
+          <div class="radio-item">
+            <input type="radio" id="dist-area-page" name="distribution-area" value="page" checked>
+            <label for="dist-area-page">Gesamte Seite</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="dist-area-selection" name="distribution-area" value="selection">
+            <label for="dist-area-selection">Innerhalb der Auswahl (Bounding Box)</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Anordnung</label>
+        <div class="radio-group">
+          <div class="radio-item">
+            <input type="radio" id="dist-auto" name="distribution-method" value="auto" checked>
+            <label for="dist-auto">Automatisch (optimale Verteilung)</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="dist-grid" name="distribution-method" value="grid">
+            <label for="dist-grid">Raster (manuelle Spalten/Zeilen)</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" id="grid-settings" hidden>
+        <label>Raster (nur bei Raster-Modus verwendet)</label>
+        <div class="form-row">
+          <input type="number" id="grid-cols" class="input-small" placeholder="Spalten" min="1" value="3">
+          <span>×</span>
+          <input type="number" id="grid-rows" class="input-small" placeholder="Zeilen" min="1" value="3">
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn-primary" id="apply-distribute-btn">Verteilen</button>
+      </div>
+    </div>
+
+    <!-- Tab 3: Distribute With Scale -->
+    <div id="tab-distribute-scale" class="tab-content">
+      <div class="form-group">
+        <p class="helper-text" id="help-distribute-scale">Verteilt und skaliert ausgewählte Elemente, um die gesamte
+          Seite mit definierten Abständen zu füllen.</p>
+      </div>
+      <div class="form-group">
+        <label>Verteilungsbereich</label>
+        <div class="radio-group">
+          <div class="radio-item">
+            <input type="radio" id="scale-area-page" name="scale-distribution-area" value="page" checked>
+            <label for="scale-area-page">Gesamte Seite</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="scale-area-selection" name="scale-distribution-area" value="selection">
+            <label for="scale-area-selection">Innerhalb der Auswahl (Bounding Box)</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Abstand zwischen Elementen</label>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <input type="number" id="spacing" class="input-small" placeholder="Abstand" value="5" step="0.1">
+          <span class="unit-label">mm</span>
+        </div>
+        <div class="helper-text">Gilt zwischen allen Elementen und zu den Seitenrändern</div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-title" id="title-format-definition">Formatdefinition</div>
+      <div class="form-group">
+        <div class="radio-group">
+          <div class="radio-item">
+            <input type="radio" id="format-mode-single" name="format-mode" value="single" checked>
+            <label for="format-mode-single">Einheitsgröße (wie bisher)</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="format-mode-multi" name="format-mode" value="multi">
+            <label for="format-mode-multi">Mehrere Formate (erweitert)</label>
+          </div>
+        </div>
+      </div>
+      <!-- Single Format Mode (default/bisherig) -->
+      <div id="single-format-settings">
+        <div class="section-title" id="title-size-constraints">Größenbeschränkungen</div>
+        <div class="form-group">
+          <label>Breite</label>
+          <div class="form-row">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="scale-min-width" class="input-small" placeholder="Min" step="0.1">
+              <span class="unit-label">mm</span>
+            </div>
+            <span>bis</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="scale-max-width" class="input-small" placeholder="Max" step="0.1">
+              <span class="unit-label">mm</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Höhe</label>
+          <div class="form-row">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="scale-min-height" class="input-small" placeholder="Min" step="0.1">
+              <span class="unit-label">mm</span>
+            </div>
+            <span>bis</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="scale-max-height" class="input-small" placeholder="Max" step="0.1">
+              <span class="unit-label">mm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Multi Format Mode (neu) -->
+      <div id="multi-format-settings" hidden>
+        <div class="section-title" id="title-multi-formats">Mehrere Formate (nur bei Multi-Modus verwendet)</div>
+        <div class="form-group">
+          <label id="label-formats-define">Formate definieren</label>
+          <div id="format-list" class="format-list">
+            <div class="helper-text">Keine Formate definiert</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label id="label-format-add">Neues Format hinzufügen</label>
+          <div class="form-row" style="margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="format-width" class="input-small" placeholder="Breite" step="0.1" min="0.1">
+              <span class="unit-label">mm</span>
+            </div>
+            <span>×</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="format-height" class="input-small" placeholder="Höhe" step="0.1" min="0.1">
+              <span class="unit-label">mm</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="format-min" class="input-small" placeholder="Min" min="0" value="0">
+              <span class="unit-label">Min</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" id="format-max" class="input-small" placeholder="Max" min="0" value="0">
+              <span class="unit-label">Max</span>
+            </div>
+          </div>
+          <div class="helper-text" id="help-format-minmax">Min/Max: 0 = beliebig viele</div>
+        </div>
+        <div class="button-group">
+          <button class="btn-secondary btn-small" id="add-format-btn">Format hinzufügen</button>
+          <button class="btn-secondary btn-small" id="cancel-edit-format-btn" hidden>Abbrechen</button>
+          <button class="btn-secondary btn-small" id="clear-formats-btn">Alle löschen</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label>Was skalieren?</label>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="scale-frame" checked>
+            <label for="scale-frame">Rahmen</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="scale-content">
+            <label for="scale-content">Inhalt</label>
+          </div>
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn-primary" id="apply-distribute-scale-btn">Verteilen & Skalieren</button>
+      </div>
+    </div>
+
+    <!-- Tab 4: Tools -->
+    <div id="tab-tools" class="tab-content">
+      <div class="form-group">
+        <p class="helper-text" id="help-tools">Zusätzliche Werkzeuge für die Arbeit mit Rahmen und Inhalten.</p>
+      </div>
+
+      <div class="section-title" id="title-center-content">Inhalt zentrieren</div>
+      <div class="form-group">
+        <p class="helper-text" id="help-center-content">Zentriert den Inhalt (Grafiken) in den ausgewählten Rahmen.</p>
+      </div>
+      <div class="button-group">
+        <button class="btn-primary" id="center-content-btn">Inhalt zentrieren</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-title" id="title-fit-to-frame">An Rahmen anpassen</div>
+      <div class="form-group">
+        <label>Skalierungsmodus</label>
+        <div class="radio-group">
+          <div class="radio-item">
+            <input type="radio" id="scale-fit-vert" name="scale-mode" value="fit-vert" checked>
+            <label for="scale-fit-vert">Vertikal anpassen</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="scale-fit-horz" name="scale-mode" value="fit-horz">
+            <label for="scale-fit-horz">Horizontal anpassen</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="scale-fill" name="scale-mode" value="fill">
+            <label for="scale-fill">Ausfüllen (automatisch)</label>
+          </div>
+          <div class="radio-item">
+            <input type="radio" id="scale-stretch" name="scale-mode" value="stretch">
+            <label for="scale-stretch">Strecken (ohne Proportionen)</label>
+          </div>
+        </div>
+        <p class="helper-text">Ausfüllen: Wählt automatisch horizontal oder vertikal, so dass der Rahmen vollständig
+          gefüllt wird.</p>
+      </div>
+      <div class="button-group">
+        <button class="btn-primary" id="scale-to-frame-btn">An Rahmen anpassen</button>
+      </div>
+    </div>
+
+    <!-- Tab 5: Settings -->
+    <div id="tab-settings" class="tab-content">
+      <div class="section-title" id="title-plugin-settings">Plugin</div>
+      <div class="form-group">
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="setting-log-enabled" checked>
+            <label for="setting-log-enabled">Logfenster anzeigen</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="setting-popups-enabled" checked>
+            <label for="setting-popups-enabled">Popups anzeigen</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="setting-language">Sprache</label>
+        <select id="setting-language">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label>Fontgröße (px)</label>
+        <input type="number" id="setting-font" class="input-small" min="9" max="14" value="11">
+      </div>
+      <div class="form-group">
+        <label>Gap (px)</label>
+        <input type="number" id="setting-gap" class="input-small" min="4" max="16" value="8">
+      </div>
+      <div class="form-group">
+        <label>Padding (px)</label>
+        <input type="number" id="setting-pad" class="input-small" min="6" max="24" value="12">
+      </div>
+      <div class="form-group">
+        <label>Divider Margin (px)</label>
+        <input type="number" id="setting-divider" class="input-small" min="8" max="32" value="16">
+      </div>
+      <div class="helper-text" style="margin-top:12px;">Einstellungen wirken direkt auf UI-Abstände und Schriftgröße.
+      </div>
+    </div>
+
+    <!-- Log Output -->
+    <div id="log-container">
+      <div class="log-actions">
+        <button class="btn-secondary btn-small" id="copy-log-btn">Log kopieren</button>
+        <button class="btn-secondary btn-small" id="clear-log-btn">Log löschen</button>
+        <div id="ui-build-stamp" class="helper-text" style="margin-left:auto;">build 2026-01-11-UI-INIT-2</div>
+      </div>
+      <textarea id="log-output" class="log-panel" aria-live="polite" tabindex="0" readonly>Log bereit…</textarea>
+    </div>
+
+  </div>
+</body>
+
+</html>

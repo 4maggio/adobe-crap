@@ -1,0 +1,16 @@
+{
+  "name": "com.philipp.indesign.pageframetools",
+  "version": "1.0.1",
+  "description": "InDesign Plugin für Rahmen-Größenanpassung und intelligente Verteilung",
+  "main": "index.html",
+  "author": "Philipp",
+  "license": "MIT",
+  "dependencies": {
+    "@spectrum-web-components/theme": "^0.40.0",
+    "@spectrum-web-components/button": "^0.40.0",
+    "@spectrum-web-components/textfield": "^0.40.0",
+    "@spectrum-web-components/checkbox": "^0.40.0",
+    "@spectrum-web-components/radio": "^0.40.0",
+    "@spectrum-web-components/tabs": "^0.40.0"
+  }
+}
