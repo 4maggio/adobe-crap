@@ -146,12 +146,16 @@ const DEFAULT_SETTINGS = {
   language: "de",
   logEnabled: true,
   popupsEnabled: true,
+  overlapElements: false,
   formats: [],
   allowEmptyFrames: false,
   scaleFormatsToFit: false,
   scaleKeepAspect: true,
   multiLayoutStyle: "grid",
   masonryCols: 3,
+  masonryPreset: "auto",
+  masonryCountMode: "selection",
+  masonryTargetCount: 0,
   masonrySeed: "",
   masonryFillPage: false,
   ui: {
@@ -219,6 +223,8 @@ const I18N = {
     "tooltip.formatMin": "Mindestanzahl für dieses Format. 0 = keine Mindestanzahl.",
     "tooltip.formatMax": "Maximale Anzahl für dieses Format. 0 = unbegrenzt.",
     "tooltip.formatsList": "Klicke ein Format zum Bearbeiten an. × löscht den Eintrag.",
+    "tooltip.livePreview": "Wendet Änderungen sofort an (ohne Dialoge).",
+    "tooltip.overlapElements": "Setzt Abstand auf 0 und deaktiviert die Eingabe.",
 
     "label.formatsDefine": "Formate definieren",
     "label.formatAdd": "Neues Format hinzufügen",
@@ -226,12 +232,21 @@ const I18N = {
     "help.allowEmptyFrames": "Erstellt zusätzliche leere Rahmen, wenn die Summe der Min-Werte größer ist als die Auswahl.",
     "label.scaleFormatsToFit": "Formate automatisch an Seite anpassen",
     "help.scaleFormatsToFit": "Skaliert alle Multi-Formate proportional herunter, damit das größte Format in den Bereich passt.",
+    "help.multiFormatNeedsFrame": "Multi-Format benötigt \"Rahmen\" aktiviert.",
     "label.scaleKeepAspect": "Seitenverhältnis beibehalten",
     "help.scaleKeepAspect": "Skaliert gleichmäßig (uniform), damit das ursprüngliche Seitenverhältnis der Rahmen erhalten bleibt.",
     "label.multiLayoutStyle": "Layout-Stil",
     "ui.layout.grid": "Raster",
     "ui.layout.masonry": "Masonry (Spalten)",
     "label.masonrySettings": "Masonry Einstellungen",
+    "label.masonryPreset": "Preset",
+    "ui.masonryPreset.auto": "Auto (nach Auswahl)",
+    "ui.masonryPreset.custom": "Manuell",
+    "ui.masonryPreset.cols": "{n} Spalten",
+    "label.masonryCountMode": "Rahmenanzahl",
+    "ui.masonryCount.selection": "Rahmen = Auswahl",
+    "ui.masonryCount.manual": "Rahmenanzahl manuell",
+    "label.masonryTargetCount": "Rahmen",
     "label.masonryCols": "Spalten",
     "label.masonrySeed": "Seed",
     "label.masonryFillPage": "Seite auffüllen",
@@ -266,6 +281,8 @@ const I18N = {
     "msg.errorWithMessage": "Fehler: {message}",
     "ui.noTemplates": "Keine Templates gespeichert",
     "ui.noFormats": "Keine Formate definiert",
+    "ui.livePreview": "Live-Vorschau",
+    "ui.overlapElements": "Elemente überlappen",
     "msg.minMaxNonNegative": "Min/Max müssen >= 0 sein",
     "msg.minNotGreaterMax": "Min darf nicht größer als Max sein",
     "msg.multiFormatError": "Multi-Format Fehler: {message}",
@@ -327,6 +344,8 @@ const I18N = {
     "tooltip.formatMin": "Minimum required count for this format. 0 = no minimum.",
     "tooltip.formatMax": "Maximum allowed count for this format. 0 = unlimited.",
     "tooltip.formatsList": "Click a format to edit. × deletes the entry.",
+    "tooltip.livePreview": "Applies changes immediately (no dialogs).",
+    "tooltip.overlapElements": "Sets spacing to 0 and disables the input.",
 
     "label.formatsDefine": "Define formats",
     "label.formatAdd": "Add new format",
@@ -334,12 +353,21 @@ const I18N = {
     "help.allowEmptyFrames": "Creates additional empty frames if the sum of Min values exceeds the selection.",
     "label.scaleFormatsToFit": "Auto scale formats to fit",
     "help.scaleFormatsToFit": "Scales down all multi formats proportionally so the largest format fits in the area.",
+    "help.multiFormatNeedsFrame": "Multi-format requires \"Frame\" enabled.",
     "label.scaleKeepAspect": "Preserve aspect ratio",
     "help.scaleKeepAspect": "Uniformly scales frames so their original aspect ratio is preserved.",
     "label.multiLayoutStyle": "Layout style",
     "ui.layout.grid": "Grid",
     "ui.layout.masonry": "Masonry (columns)",
     "label.masonrySettings": "Masonry settings",
+    "label.masonryPreset": "Preset",
+    "ui.masonryPreset.auto": "Auto (from selection)",
+    "ui.masonryPreset.custom": "Manual",
+    "ui.masonryPreset.cols": "{n} columns",
+    "label.masonryCountMode": "Frame count",
+    "ui.masonryCount.selection": "Frames = selection",
+    "ui.masonryCount.manual": "Manual frame count",
+    "label.masonryTargetCount": "Frames",
     "label.masonryCols": "Columns",
     "label.masonrySeed": "Seed",
     "label.masonryFillPage": "Fill page",
@@ -374,6 +402,8 @@ const I18N = {
     "msg.errorWithMessage": "Error: {message}",
     "ui.noTemplates": "No templates saved",
     "ui.noFormats": "No formats defined",
+    "ui.livePreview": "Live Preview",
+    "ui.overlapElements": "Elements overlap",
     "msg.minMaxNonNegative": "Min/Max must be >= 0",
     "msg.minNotGreaterMax": "Min must not be greater than Max",
     "msg.multiFormatError": "Multi-format error: {message}",
@@ -490,6 +520,7 @@ function applyLanguageToUI() {
   setTextById("help-allow-empty-frames", "help.allowEmptyFrames");
   setTextById("label-scale-formats-to-fit", "label.scaleFormatsToFit");
   setTextById("help-scale-formats-to-fit", "help.scaleFormatsToFit");
+  setTextById("help-multi-format-needs-frame", "help.multiFormatNeedsFrame");
   setTextById("label-multi-layout-style", "label.multiLayoutStyle");
 
   const optGrid = document.querySelector('#multi-layout-style option[value="grid"]');
@@ -509,6 +540,29 @@ function applyLanguageToUI() {
   setTextById("title-center-content", "title.centerContent");
   setTextById("help-center-content", "help.centerContent");
   setTextById("title-fit-to-frame", "title.fitToFrame");
+
+  // Live preview labels
+  setTextById("label-preview-resize", "ui.livePreview");
+  setTextById("label-preview-distribute", "ui.livePreview");
+  setTextById("label-preview-distribute-scale", "ui.livePreview");
+  setTextById("label-preview-fit-to-frame", "ui.livePreview");
+  setTextById("label-preview-center-content", "ui.livePreview");
+
+  setTextById("label-overlap-elements", "ui.overlapElements");
+
+  // Masonry preset / count controls
+  setTextById('label-masonry-preset', 'label.masonryPreset');
+  setTextById('label-masonry-count-mode', 'label.masonryCountMode');
+  setTextById('label-masonry-target-count', 'label.masonryTargetCount');
+  setTextById('opt-masonry-preset-auto', 'ui.masonryPreset.auto');
+  setTextById('opt-masonry-preset-custom', 'ui.masonryPreset.custom');
+  const presetCols = [1, 2, 3, 4, 5];
+  presetCols.forEach((n) => {
+    const el = document.getElementById(`opt-masonry-preset-${n}`);
+    if (el) el.textContent = t('ui.masonryPreset.cols', { n });
+  });
+  setTextById('opt-masonry-count-selection', 'ui.masonryCount.selection');
+  setTextById('opt-masonry-count-manual', 'ui.masonryCount.manual');
 
   // Settings controls
   const lblLog = document.querySelector('label[for="setting-log-enabled"]');
@@ -575,7 +629,14 @@ function applyTooltips() {
     "format-width": "tooltip.formatWidth",
     "format-height": "tooltip.formatHeight",
     "format-min": "tooltip.formatMin",
-    "format-max": "tooltip.formatMax"
+    "format-max": "tooltip.formatMax",
+    "preview-resize": "tooltip.livePreview",
+    "preview-distribute": "tooltip.livePreview",
+    "preview-distribute-scale": "tooltip.livePreview",
+    "preview-fit-to-frame": "tooltip.livePreview",
+    "preview-center-content": "tooltip.livePreview"
+    ,
+    "overlap-elements": "tooltip.overlapElements"
   };
   Object.keys(overrides).forEach((id) => {
     const el = document.getElementById(id);
@@ -728,6 +789,11 @@ function scaleGraphicsInObject(obj, targetWidth, targetHeight) {
 async function showMessage(message, isError = false) {
   try {
     const msg = (typeof message === "string" ? message.trim() : "") || (isError ? t("popup.defaultError") : t("popup.defaultInfo"));
+
+    // Live preview runs should not spam dialogs.
+    if (typeof window !== 'undefined' && window.__ppSuppressPopups) {
+      return;
+    }
 
     // If popups are disabled, log instead.
     if (!pluginSettings.popupsEnabled) {
@@ -1050,6 +1116,7 @@ function renderFormatList() {
       if (editFormatIndex !== null && editFormatIndex > index) editFormatIndex -= 1;
       renderFormatList();
       appendLog(`Format gelöscht: ${fmt.width}x${fmt.height}mm`);
+      try { requestLivePreview('distributeScale'); } catch (_) { }
     });
 
     itemDiv.appendChild(specsSpan);
@@ -1336,6 +1403,9 @@ async function renderTemplates() {
       const heightInput = document.getElementById('resize-height');
       if (widthInput) widthInput.value = t.width.toString();
       if (heightInput) heightInput.value = t.height.toString();
+
+      // If live preview is enabled for resize, apply immediately.
+      try { requestLivePreview('resize'); } catch (_) { }
     });
 
     listEl.appendChild(itemDiv);
@@ -1613,7 +1683,9 @@ async function applyDistributeScale() {
       return;
     }
 
-    const spacing = parseFloat(document.getElementById('spacing').value);
+    const overlapEl = document.getElementById('overlap-elements');
+    const overlapEnabled = overlapEl ? !!overlapEl.checked : !!pluginSettings.overlapElements;
+    const spacing = overlapEnabled ? 0 : parseFloat(document.getElementById('spacing').value);
     const minWidth = parseFloat(document.getElementById('scale-min-width').value);
     const maxWidth = parseFloat(document.getElementById('scale-max-width').value);
     const minHeight = parseFloat(document.getElementById('scale-min-height').value);
@@ -1677,7 +1749,16 @@ async function applyDistributeScale() {
     const multiLayoutStyle = layoutStyleEl ? layoutStyleEl.value : (pluginSettings.multiLayoutStyle || 'grid');
 
     const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
-    const allowEmptyFrames = allowEmptyFramesEl ? !!allowEmptyFramesEl.checked : !!pluginSettings.allowEmptyFrames;
+    let allowEmptyFrames = allowEmptyFramesEl ? !!allowEmptyFramesEl.checked : !!pluginSettings.allowEmptyFrames;
+
+    // Masonry: optional manual target frame count
+    const masonryCountModeEl = document.getElementById('masonry-count-mode');
+    const masonryTargetCountEl = document.getElementById('masonry-target-count');
+    const masonryCountMode = masonryCountModeEl ? String(masonryCountModeEl.value || 'selection') : String(pluginSettings.masonryCountMode || 'selection');
+    const masonryTargetCount = (() => {
+      const raw = masonryTargetCountEl ? parseInt(String(masonryTargetCountEl.value || ''), 10) : parseInt(String(pluginSettings.masonryTargetCount || ''), 10);
+      return Number.isFinite(raw) && raw > 0 ? raw : 0;
+    })();
 
     if (formatMode === 'multi' && (!definedFormats || definedFormats.length === 0)) {
       showMessage(t('msg.noFormatsDefined'), true);
@@ -1727,6 +1808,14 @@ async function applyDistributeScale() {
         }
       }
 
+      // If user chose a manual masonry frame count, we will create extra empty frames.
+      if (multiLayoutStyle === 'masonry' && masonryCountMode === 'manual' && masonryTargetCount > originalItemCount) {
+        if (!allowEmptyFrames) {
+          allowEmptyFrames = true;
+          appendLog(`Masonry: Manuelle Rahmenanzahl (${masonryTargetCount}) aktiviert -> "Leere Rahmen erlauben" wird für diesen Lauf erzwungen`);
+        }
+      }
+
       const totalMin = definedFormats.reduce((sum, f) => sum + (parseInt(f.min, 10) || 0), 0);
       if (totalMin > originalItemCount && !allowEmptyFrames) {
         const msg = `Multi-Format: ∑Min=${totalMin} ist größer als Auswahl (${originalItemCount}). Aktiviere "Leere Rahmen erlauben" oder reduziere Min.`;
@@ -1739,6 +1828,14 @@ async function applyDistributeScale() {
         targetCount = Math.max(originalItemCount, totalMin);
         if (targetCount > originalItemCount) {
           appendLog(`Leere Rahmen erlaubt: Zielanzahl Frames=${targetCount} (Auswahl=${originalItemCount}, ∑Min=${totalMin})`);
+        }
+      }
+
+      if (multiLayoutStyle === 'masonry' && masonryCountMode === 'manual' && masonryTargetCount > 0) {
+        const before = targetCount;
+        targetCount = Math.max(targetCount, originalItemCount, masonryTargetCount);
+        if (targetCount !== before) {
+          appendLog(`Masonry: Zielanzahl Frames (manuell) = ${targetCount}`);
         }
       }
 
@@ -1811,14 +1908,28 @@ async function applyDistributeScale() {
       const page = getCurrentPage(doc);
       try {
         if (page && page.rectangles && typeof page.rectangles.add === 'function') {
-          return page.rectangles.add();
+          const rect = page.rectangles.add();
+          try {
+            if (typeof window !== 'undefined' && window.__ppLivePreviewContext && window.__ppLivePreviewContext.isPreview) {
+              const list = window.__ppLivePreviewContext.createdObjects;
+              if (Array.isArray(list)) list.push(rect);
+            }
+          } catch (_) { }
+          return rect;
         }
       } catch (_) {
         // ignore
       }
       try {
         if (doc && doc.rectangles && typeof doc.rectangles.add === 'function') {
-          return doc.rectangles.add();
+          const rect = doc.rectangles.add();
+          try {
+            if (typeof window !== 'undefined' && window.__ppLivePreviewContext && window.__ppLivePreviewContext.isPreview) {
+              const list = window.__ppLivePreviewContext.createdObjects;
+              if (Array.isArray(list)) list.push(rect);
+            }
+          } catch (_) { }
+          return rect;
         }
       } catch (_) {
         // ignore
@@ -1842,8 +1953,20 @@ async function applyDistributeScale() {
       const hFromFormats = formatsForLayout && formatsForLayout.length > 0
         ? Math.max(...formatsForLayout.map(f => f.height || 0), 0)
         : 0;
-      cellW = Math.max(cellW, wFromAssignments, wFromFormats);
-      cellH = Math.max(cellH, hFromAssignments, hFromFormats);
+
+      const maxW = Math.max(wFromAssignments, wFromFormats, 0);
+      const maxH = Math.max(hFromAssignments, hFromFormats, 0);
+
+      // IMPORTANT:
+      // In masonry mode, defaultItemWidth is based on cols=1 (full-page width), which would force maxColsByWidth=1.
+      // We want the column width to be driven by the max format size instead.
+      if (multiLayoutStyle === 'masonry') {
+        cellW = maxW > 0 ? maxW : cellW;
+        cellH = maxH > 0 ? maxH : cellH;
+      } else {
+        cellW = Math.max(cellW, maxW);
+        cellH = Math.max(cellH, maxH);
+      }
     }
 
     const boundsBottom = distributionBounds.top + distributionBounds.height;
@@ -1852,13 +1975,29 @@ async function applyDistributeScale() {
     const fmtKey = (f) => `${Number(f.width || 0).toFixed(4)}x${Number(f.height || 0).toFixed(4)}`;
 
     // Masonry settings (DOM wins over persisted settings)
+    const masonryPresetEl = document.getElementById('masonry-preset');
     const masonryColsEl = document.getElementById('masonry-cols');
     const masonrySeedEl = document.getElementById('masonry-seed');
     const masonryFillEl = document.getElementById('masonry-fill-page');
+    const masonryPreset = masonryPresetEl ? String(masonryPresetEl.value || 'custom') : String(pluginSettings.masonryPreset || 'custom');
     const masonrySeed = (masonrySeedEl ? masonrySeedEl.value : (pluginSettings.masonrySeed || '')).trim();
     const masonryFillPage = masonryFillEl ? !!masonryFillEl.checked : !!pluginSettings.masonryFillPage;
+    const autoColsByCount = (count) => {
+      const n = Math.max(1, Number(count) || 1);
+      if (n <= 3) return 1;
+      if (n <= 8) return 2;
+      if (n <= 15) return 3;
+      if (n <= 24) return 4;
+      return 5;
+    };
+
     const masonryColsRequested = (() => {
-      const raw = masonryColsEl ? parseInt(masonryColsEl.value, 10) : parseInt(pluginSettings.masonryCols, 10);
+      if (masonryPreset === 'auto') return autoColsByCount(slotCount);
+      if (/^cols-\d+$/.test(masonryPreset)) {
+        const n = parseInt(masonryPreset.replace('cols-', ''), 10);
+        return Number.isFinite(n) && n > 0 ? n : 3;
+      }
+      const raw = masonryColsEl ? parseInt(String(masonryColsEl.value || ''), 10) : parseInt(String(pluginSettings.masonryCols || ''), 10);
       return Number.isFinite(raw) && raw > 0 ? raw : 3;
     })();
 
@@ -1868,12 +2007,39 @@ async function applyDistributeScale() {
         formatAssignments = seededShuffle([...formatAssignments], masonrySeed);
       }
 
-      const colW = cellW + spacing;
-      const maxColsByWidth = Math.max(1, Math.floor((distributionBounds.width + spacing) / colW));
-      const masonryCols = Math.min(Math.max(1, masonryColsRequested), maxColsByWidth);
+      const uniformColWidthEl = document.getElementById('masonry-uniform-col-width');
+      const uniformColWidth = uniformColWidthEl ? !!uniformColWidthEl.checked : !!pluginSettings.masonryUniformColWidth;
+
+      // Compute column width for positioning.
+      // - uniformColWidth: columns fill the available width evenly.
+      // - otherwise: column width is based on max format width (cellW).
+      let masonryCols = Math.max(1, masonryColsRequested);
+      let colInnerW = cellW;
+      if (uniformColWidth) {
+        // Reduce cols if the computed width would become too small.
+        while (masonryCols > 1) {
+          const w = (distributionBounds.width - spacing * (masonryCols + 1)) / masonryCols;
+          if (Number.isFinite(w) && w >= MIN_DIMENSION) break;
+          masonryCols -= 1;
+        }
+        colInnerW = (distributionBounds.width - spacing * (masonryCols + 1)) / masonryCols;
+        if (!Number.isFinite(colInnerW) || colInnerW < MIN_DIMENSION) {
+          const msg = `Masonry: Spaltenbreite ungültig (cols=${masonryCols}, spacing=${spacing}).`;
+          appendLog(`❌ ${msg}`);
+          showMessage(msg, true);
+          return;
+        }
+      } else {
+        const colW0 = cellW + spacing;
+        const maxColsByWidth = Math.max(1, Math.floor((distributionBounds.width + spacing) / colW0));
+        masonryCols = Math.min(masonryCols, maxColsByWidth);
+        colInnerW = cellW;
+      }
+
+      const colW = colInnerW + spacing;
       const heights = new Array(masonryCols).fill(0);
 
-      appendLog(`Masonry: cols=${masonryCols}/${masonryColsRequested} (max ${maxColsByWidth}), seed="${masonrySeed}", fillPage=${masonryFillPage}, allowEmptyFrames=${allowEmptyFrames}`);
+      appendLog(`Masonry: cols=${masonryCols}/${masonryColsRequested}, colW=${colInnerW.toFixed(2)}mm, uniformColWidth=${uniformColWidth}, seed="${masonrySeed}", fillPage=${masonryFillPage}, allowEmptyFrames=${allowEmptyFrames}`);
 
       const pickBestCol = () => {
         let bestCol = 0;
@@ -1887,7 +2053,7 @@ async function applyDistributeScale() {
         const bestCol = pickBestCol();
         const cellLeft = distributionBounds.left + spacing + bestCol * colW;
         const cellTop = distributionBounds.top + spacing + heights[bestCol];
-        const newLeft = cellLeft + (cellW - w) / 2;
+        const newLeft = cellLeft;
         const newTop = cellTop;
         const newRight = newLeft + w;
         const newBottom = newTop + h;
@@ -1922,7 +2088,14 @@ async function applyDistributeScale() {
             if (max === undefined || max === null || isNaN(max)) return true;
             return (counts.get(k) || 0) < max;
           })
-          .filter(f => (f.height || 0) <= maxH);
+          .filter(f => {
+            const w = Number(f.width) || 0;
+            const h = Number(f.height) || 0;
+            if (!uniformColWidth) return (h || 0) <= maxH;
+            if (w <= 0 || h <= 0) return false;
+            const scaledH = h * (colInnerW / w);
+            return scaledH <= maxH;
+          });
 
         if (candidates.length === 0) return null;
         candidates.sort((a, b) => (a.height - b.height) || (a.width - b.width));
@@ -1959,11 +2132,19 @@ async function applyDistributeScale() {
 
         let itemWidth, itemHeight;
         if (formatAssignments && formatAssignments[index]) {
-          itemWidth = formatAssignments[index].width;
-          itemHeight = formatAssignments[index].height;
-          appendLog(`  -> Format: ${itemWidth}x${itemHeight}mm`);
+          const baseW = Number(formatAssignments[index].width) || 0;
+          const baseH = Number(formatAssignments[index].height) || 0;
+          if (uniformColWidth && baseW > 0 && baseH > 0) {
+            itemWidth = colInnerW;
+            itemHeight = baseH * (colInnerW / baseW);
+            appendLog(`  -> Format: ${baseW}x${baseH}mm -> ${itemWidth.toFixed(2)}x${itemHeight.toFixed(2)}mm (uniform)`);
+          } else {
+            itemWidth = baseW;
+            itemHeight = baseH;
+            appendLog(`  -> Format: ${itemWidth}x${itemHeight}mm`);
+          }
         } else {
-          itemWidth = defaultItemWidth;
+          itemWidth = uniformColWidth ? colInnerW : defaultItemWidth;
           itemHeight = defaultItemHeight;
         }
 
@@ -2087,6 +2268,631 @@ async function applyDistributeScale() {
 // Event Listeners / Panel Init
 // ============================
 
+function debounce(fn, waitMs) {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      fn(...args);
+    }, waitMs);
+  };
+}
+
+function supportsUndo() {
+  const app = getInDesignApp();
+  if (!app) return false;
+  try {
+    return typeof app.undo === 'function';
+  } catch (_) {
+    return false;
+  }
+}
+
+function tryUndoOnce() {
+  const app = getInDesignApp();
+  if (!app) return false;
+  try {
+    if (typeof app.undo !== 'function') return false;
+    app.undo();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function hasActiveSelection() {
+  const doc = getActiveDocumentSafe();
+  try {
+    return !!(doc && doc.selection && doc.selection.length > 0);
+  } catch (_) {
+    return false;
+  }
+}
+
+function canLivePreviewResize() {
+  if (!hasActiveSelection()) return false;
+  const scaleFrame = !!(document.getElementById('resize-frame') && document.getElementById('resize-frame').checked);
+  const scaleContent = !!(document.getElementById('resize-content') && document.getElementById('resize-content').checked);
+  if (!scaleFrame && !scaleContent) return false;
+
+  const widthEl = document.getElementById('resize-width');
+  const heightEl = document.getElementById('resize-height');
+  const lockBtn = document.getElementById('lock-proportion');
+  const lockRatio = !!(lockBtn && lockBtn.classList.contains('active'));
+
+  const width = widthEl ? parseFloat(widthEl.value) : NaN;
+  const height = heightEl ? parseFloat(heightEl.value) : NaN;
+
+  if (lockRatio) {
+    const hasOneSide = (Number.isFinite(width) && width >= MIN_DIMENSION) || (Number.isFinite(height) && height >= MIN_DIMENSION);
+    return hasOneSide;
+  }
+
+  return Number.isFinite(width) && Number.isFinite(height) && width >= MIN_DIMENSION && height >= MIN_DIMENSION;
+}
+
+function canLivePreviewDistribute() {
+  if (!hasActiveSelection()) return false;
+  const horizontal = !!(document.getElementById('distribute-horizontal') && document.getElementById('distribute-horizontal').checked);
+  const vertical = !!(document.getElementById('distribute-vertical') && document.getElementById('distribute-vertical').checked);
+  if (!horizontal && !vertical) return false;
+
+  const gapEl = document.getElementById('distribute-gap');
+  if (gapEl) {
+    const raw = String(gapEl.value || '').trim();
+    if (raw) {
+      const gap = parseFloat(raw);
+      if (!Number.isFinite(gap) || gap < 0) return false;
+    }
+  }
+
+  return true;
+}
+
+function livePreviewDistributeScaleRequiresUndo() {
+  const formatMode = getCheckedRadioValue('format-mode', 'single');
+  if (formatMode !== 'multi') return false;
+
+  const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
+  const allowEmptyFrames = allowEmptyFramesEl ? !!allowEmptyFramesEl.checked : !!pluginSettings.allowEmptyFrames;
+
+  const layoutStyleEl = document.getElementById('multi-layout-style');
+  const style = layoutStyleEl ? String(layoutStyleEl.value || '') : String(pluginSettings.multiLayoutStyle || 'grid');
+
+  const masonryFillEl = document.getElementById('masonry-fill-page');
+  const masonryFillPage = masonryFillEl ? !!masonryFillEl.checked : !!pluginSettings.masonryFillPage;
+
+  // These options can create additional objects; without undo this can quickly accumulate.
+  return !!(allowEmptyFrames || (style === 'masonry' && masonryFillPage));
+}
+
+function canLivePreviewDistributeScale(state) {
+  if (!hasActiveSelection()) return false;
+  const overlapEl = document.getElementById('overlap-elements');
+  const overlapEnabled = overlapEl ? !!overlapEl.checked : !!pluginSettings.overlapElements;
+
+  let spacing = 0;
+  if (!overlapEnabled) {
+    const spacingEl = document.getElementById('spacing');
+    const spacingRaw = spacingEl ? String(spacingEl.value || '').trim() : '';
+    spacing = parseFloat(spacingRaw);
+    if (!Number.isFinite(spacing) || spacing < 0) return false;
+  }
+
+  const scaleFrame = !!(document.getElementById('scale-frame') && document.getElementById('scale-frame').checked);
+  const scaleContent = !!(document.getElementById('scale-content') && document.getElementById('scale-content').checked);
+  if (!scaleFrame && !scaleContent) return false;
+
+  const formatMode = getCheckedRadioValue('format-mode', 'single');
+  if (formatMode === 'multi') {
+    // Multi-Format requires frames to be scaled, otherwise format sizes can't be applied.
+    if (!scaleFrame) {
+      if (state && !state.warnedNeedsFrame) {
+        appendLog('Live-Vorschau: Multi-Format benötigt "Rahmen" aktiviert (sonst können die Formatgrößen nicht angewendet werden).');
+        state.warnedNeedsFrame = true;
+      }
+      return false;
+    }
+    if (state) state.warnedNeedsFrame = false;
+
+    if (!Array.isArray(definedFormats) || definedFormats.length === 0) {
+      if (state && !state.warnedNoFormats) {
+        appendLog('Live-Vorschau: Keine Formate definiert (Multi-Format) – füge zuerst mindestens ein Format hinzu.');
+        state.warnedNoFormats = true;
+      }
+      return false;
+    }
+    if (state) state.warnedNoFormats = false;
+  } else if (state) {
+    // reset one-shot warnings when leaving multi mode
+    state.warnedNoFormats = false;
+    state.warnedNeedsFrame = false;
+  }
+
+  return true;
+}
+
+function canLivePreviewCenterContent() {
+  return hasActiveSelection();
+}
+
+async function applyCenterContent() {
+  try {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
+      showMessage(t('msg.noActiveDocument'), true);
+      return;
+    }
+    if (!doc || !doc.selection || doc.selection.length === 0) {
+      showMessage(t('msg.noSelection'), true);
+      return;
+    }
+
+    let processed = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < doc.selection.length; i++) {
+      const frame = doc.selection[i];
+
+      if (frame && frame.fit && FitOptions) {
+        try {
+          frame.fit(FitOptions.CENTER_CONTENT);
+          processed++;
+          const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
+          appendLog(`Center Content -> ${label}: Content zentriert`);
+        } catch (fitErr) {
+          appendLog(`Fehler beim Zentrieren von Objekt ${i}: ${fitErr.message}`);
+          skipped++;
+        }
+      } else {
+        skipped++;
+      }
+    }
+
+    appendLog(`Center Content: ${processed} Rahmen zentriert, ${skipped} übersprungen`);
+
+    if (processed === 0) {
+      showMessage(t('msg.noFramesWithContent'), true);
+    } else {
+      showMessage(t('msg.centeredFrames', { count: processed }));
+    }
+  } catch (e) {
+    showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
+    appendLog('Center Content Fehler: ' + e.message);
+  }
+}
+
+function canLivePreviewFitToFrame() {
+  return hasActiveSelection();
+}
+
+async function applyFitToFrame() {
+  try {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
+      showMessage(t('msg.noActiveDocument'), true);
+      return;
+    }
+    if (!doc || !doc.selection || doc.selection.length === 0) {
+      showMessage(t('msg.noSelection'), true);
+      return;
+    }
+
+    const mode = getCheckedRadioValue('scale-mode', 'fit-vert');
+
+    let processed = 0;
+    for (let i = 0; i < doc.selection.length; i++) {
+      const frame = doc.selection[i];
+      if (frame && frame.allGraphics && frame.allGraphics.length > 0 && frame.geometricBounds) {
+        const frameBounds = frame.geometricBounds;
+        const frameWidth = frameBounds[3] - frameBounds[1];
+        const frameHeight = frameBounds[2] - frameBounds[0];
+
+        for (let g = 0; g < frame.allGraphics.length; g++) {
+          const graphic = frame.allGraphics[g];
+          if (!graphic || !graphic.geometricBounds) continue;
+
+          try {
+            // Reset scaling
+            graphic.absoluteHorizontalScale = 100;
+            graphic.absoluteVerticalScale = 100;
+
+            const gb = graphic.geometricBounds;
+            const gw = gb[3] - gb[1];
+            const gh = gb[2] - gb[0];
+
+            if (gw <= 0 || gh <= 0 || frameWidth <= 0 || frameHeight <= 0) continue;
+
+            let scaleX = 100;
+            let scaleY = 100;
+
+            if (mode === 'stretch') {
+              // True stretch: width AND height independently (distorts)
+              scaleX = (frameWidth / gw) * 100;
+              scaleY = (frameHeight / gh) * 100;
+              appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(1)}%, scaleY=${scaleY.toFixed(1)}%`);
+            } else if (mode === 'fill') {
+              // Fill: choose bigger factor so content covers the frame
+              const scaleToFitWidth = (frameWidth / gw) * 100;
+              const scaleToFitHeight = (frameHeight / gh) * 100;
+
+              if (scaleToFitWidth > scaleToFitHeight) {
+                const s = scaleToFitWidth;
+                scaleX = s;
+                scaleY = s;
+                const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
+                appendLog(`  -> Fill (horz) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% > ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+              } else {
+                const s = scaleToFitHeight;
+                scaleX = s;
+                scaleY = s;
+                const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
+                appendLog(`  -> Fill (vert) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% < ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+              }
+            } else if (mode === 'fit-vert') {
+              const s = (frameHeight / gh) * 100;
+              scaleX = s;
+              scaleY = s;
+            } else if (mode === 'fit-horz') {
+              const s = (frameWidth / gw) * 100;
+              scaleX = s;
+              scaleY = s;
+            }
+
+            graphic.absoluteHorizontalScale = scaleX;
+            graphic.absoluteVerticalScale = scaleY;
+
+            // Center after scaling
+            if (frame.fit && FitOptions) {
+              frame.fit(FitOptions.CENTER_CONTENT);
+            } else {
+              const newGB = graphic.geometricBounds;
+              const graphicWidth = newGB[3] - newGB[1];
+              const graphicHeight = newGB[2] - newGB[0];
+              const frameCenterX = frameBounds[1] + frameWidth / 2;
+              const frameCenterY = frameBounds[0] + frameHeight / 2;
+
+              graphic.geometricBounds = [
+                frameCenterY - graphicHeight / 2,
+                frameCenterX - graphicWidth / 2,
+                frameCenterY + graphicHeight / 2,
+                frameCenterX + graphicWidth / 2
+              ];
+            }
+          } catch (err) {
+            appendLog(`Grafik konnte nicht skaliert werden: ${err.message}`);
+          }
+        }
+        processed++;
+      }
+    }
+
+    appendLog(`Scale to Frame (${mode}): ${processed} Rahmen verarbeitet`);
+    showMessage(t('msg.scaledFrames', { count: processed, mode }));
+  } catch (e) {
+    showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
+    appendLog('Scale to Frame Fehler: ' + e.message);
+  }
+}
+
+const livePreviewRegistry = {
+  resize: {
+    checkboxId: 'preview-resize',
+    debounceMs: 300,
+    apply: () => applyResize(),
+    canRun: () => canLivePreviewResize(),
+    watchIds: ['resize-width', 'resize-height', 'resize-frame', 'resize-content', 'lock-proportion'],
+    watchNames: []
+  },
+  distribute: {
+    checkboxId: 'preview-distribute',
+    debounceMs: 300,
+    apply: () => applyDistribute(),
+    canRun: () => canLivePreviewDistribute(),
+    watchIds: ['distribute-horizontal', 'distribute-vertical', 'distribute-gap', 'grid-cols', 'grid-rows'],
+    watchNames: ['distribution-area', 'distribution-method']
+  },
+  distributeScale: {
+    checkboxId: 'preview-distribute-scale',
+    debounceMs: 550,
+    apply: () => applyDistributeScale(),
+    canRun: (state) => canLivePreviewDistributeScale(state),
+    watchIds: [
+      'spacing',
+      'overlap-elements',
+      'scale-min-width', 'scale-max-width', 'scale-min-height', 'scale-max-height',
+      'scale-frame', 'scale-content',
+      'scale-keep-aspect',
+      'allow-empty-frames',
+      'scale-formats-to-fit',
+      'multi-layout-style',
+      'masonry-preset', 'masonry-cols',
+      'masonry-count-mode', 'masonry-target-count',
+      'masonry-seed', 'masonry-fill-page'
+    ],
+    watchNames: ['scale-distribution-area', 'format-mode']
+  },
+  fitToFrame: {
+    checkboxId: 'preview-fit-to-frame',
+    debounceMs: 300,
+    apply: () => applyFitToFrame(),
+    canRun: () => canLivePreviewFitToFrame(),
+    watchIds: [],
+    watchNames: ['scale-mode']
+  },
+  centerContent: {
+    checkboxId: 'preview-center-content',
+    debounceMs: 250,
+    apply: () => applyCenterContent(),
+    canRun: () => canLivePreviewCenterContent(),
+    watchIds: [],
+    watchNames: []
+  }
+};
+
+const livePreviewState = {
+  resize: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] },
+  distribute: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] },
+  distributeScale: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [], warnedNoFormats: false, warnedNeedsFrame: false },
+  fitToFrame: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] },
+  centerContent: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] }
+};
+
+function capturePreviewSnapshot() {
+  const doc = getActiveDocumentSafe();
+  if (!doc) return null;
+
+  let selection = [];
+  try {
+    selection = doc.selection ? Array.from(doc.selection) : [];
+  } catch (_) {
+    selection = [];
+  }
+
+  const items = [];
+  for (let i = 0; i < selection.length; i++) {
+    const item = selection[i];
+    if (!item) continue;
+
+    let bounds = null;
+    try {
+      if (item.geometricBounds) bounds = Array.from(item.geometricBounds);
+    } catch (_) {
+      bounds = null;
+    }
+
+    const graphics = [];
+    try {
+      if (item.allGraphics && item.allGraphics.length) {
+        for (let g = 0; g < item.allGraphics.length; g++) {
+          const gr = item.allGraphics[g];
+          if (!gr) continue;
+          let gb = null;
+          try { if (gr.geometricBounds) gb = Array.from(gr.geometricBounds); } catch (_) { gb = null; }
+          let hs = null;
+          let vs = null;
+          try { hs = Number(gr.absoluteHorizontalScale); } catch (_) { hs = null; }
+          try { vs = Number(gr.absoluteVerticalScale); } catch (_) { vs = null; }
+          graphics.push({ graphic: gr, bounds: gb, hScale: hs, vScale: vs });
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    items.push({ item, bounds, graphics });
+  }
+
+  return { items };
+}
+
+function restorePreviewSnapshot(snapshot) {
+  if (!snapshot || !Array.isArray(snapshot.items)) return;
+  // Restore frame bounds first
+  snapshot.items.forEach((entry) => {
+    try {
+      if (entry && entry.item && entry.bounds && entry.item.geometricBounds) {
+        entry.item.geometricBounds = entry.bounds;
+      }
+    } catch (_) {
+      // ignore
+    }
+  });
+  // Then restore graphics
+  snapshot.items.forEach((entry) => {
+    const list = entry && Array.isArray(entry.graphics) ? entry.graphics : [];
+    list.forEach((g) => {
+      try {
+        if (!g || !g.graphic) return;
+        if (typeof g.hScale === 'number' && !isNaN(g.hScale)) g.graphic.absoluteHorizontalScale = g.hScale;
+        if (typeof g.vScale === 'number' && !isNaN(g.vScale)) g.graphic.absoluteVerticalScale = g.vScale;
+        if (g.bounds && g.graphic.geometricBounds) g.graphic.geometricBounds = g.bounds;
+      } catch (_) {
+        // ignore
+      }
+    });
+  });
+}
+
+function removeCreatedObjects(createdObjects) {
+  if (!Array.isArray(createdObjects) || createdObjects.length === 0) return;
+  for (let i = createdObjects.length - 1; i >= 0; i--) {
+    const obj = createdObjects[i];
+    try {
+      if (obj && typeof obj.remove === 'function') obj.remove();
+    } catch (_) {
+      // ignore
+    }
+  }
+}
+
+function revertLivePreview(kind) {
+  const st = livePreviewState[kind];
+  if (!st) return;
+
+  if (st.running) {
+    st.cancelRequested = true;
+    return;
+  }
+
+  try {
+    removeCreatedObjects(st.createdObjects);
+  } finally {
+    st.createdObjects = [];
+  }
+  try {
+    restorePreviewSnapshot(st.snapshot);
+  } finally {
+    st.snapshot = null;
+    st.applied = false;
+    st.pending = false;
+    st.cancelRequested = false;
+  }
+}
+
+function revertAllLivePreviews() {
+  Object.keys(livePreviewState).forEach((k) => revertLivePreview(k));
+}
+
+function requestLivePreview(kind) {
+  const st = livePreviewState[kind];
+  if (!st || !st.enabled || typeof st.schedule !== 'function') return;
+  st.schedule();
+}
+
+async function runLivePreview(kind) {
+  const cfg = livePreviewRegistry[kind];
+  const st = livePreviewState[kind];
+  if (!cfg || !st || !st.enabled) return;
+
+  const canRun = typeof cfg.canRun === 'function' ? cfg.canRun(st) : true;
+  if (!canRun) return;
+
+  if (st.running) {
+    st.pending = true;
+    return;
+  }
+
+  st.running = true;
+  st.cancelRequested = false;
+  const prevSuppress = typeof window !== 'undefined' ? window.__ppSuppressPopups : false;
+  try {
+    if (typeof window !== 'undefined') window.__ppSuppressPopups = true;
+
+    // Always revert previous preview first (temporary preview behavior)
+    if (st.applied) {
+      revertLivePreview(kind);
+    }
+
+    // Capture snapshot so we can restore on disable/tab switch
+    st.snapshot = capturePreviewSnapshot();
+    st.createdObjects = [];
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.__ppLivePreviewContext = { isPreview: true, kind, createdObjects: st.createdObjects };
+      }
+      await cfg.apply();
+      st.applied = true;
+    } finally {
+      try {
+        if (typeof window !== 'undefined') window.__ppLivePreviewContext = null;
+      } catch (_) {
+        // ignore
+      }
+    }
+  } finally {
+    if (typeof window !== 'undefined') window.__ppSuppressPopups = prevSuppress;
+    st.running = false;
+
+    // If preview was disabled or a tab switch requested a revert during execution
+    if (!st.enabled || st.cancelRequested) {
+      revertLivePreview(kind);
+    }
+
+    if (st.pending) {
+      st.pending = false;
+      // queue next run quickly
+      try { requestLivePreview(kind); } catch (_) { }
+    }
+  }
+}
+
+async function applyWithLivePreviewCommit(kind, applyFn) {
+  const st = livePreviewState[kind];
+  try {
+    // If there is an active preview state, revert it first to commit a clean step.
+    if (st && st.enabled && st.applied) {
+      revertLivePreview(kind);
+    }
+    await applyFn();
+  } finally {
+    if (st) {
+      st.applied = false;
+      st.snapshot = null;
+      st.createdObjects = [];
+    }
+  }
+}
+
+function initLivePreviewWiring() {
+  const wire = (kind) => {
+    const cfg = livePreviewRegistry[kind];
+    const st = livePreviewState[kind];
+    if (!cfg || !st) return;
+
+    const toggle = document.getElementById(cfg.checkboxId);
+    if (!toggle) return;
+
+    st.schedule = debounce(() => {
+      void runLivePreview(kind);
+    }, cfg.debounceMs || 300);
+
+    const onToggle = () => {
+      st.enabled = !!toggle.checked;
+      st.pending = false;
+      st.cancelRequested = false;
+
+      if (st.enabled) {
+        if (Object.prototype.hasOwnProperty.call(st, 'warnedNoFormats')) st.warnedNoFormats = false;
+        if (Object.prototype.hasOwnProperty.call(st, 'warnedNeedsFrame')) st.warnedNeedsFrame = false;
+      }
+
+      if (!st.enabled) {
+        revertLivePreview(kind);
+        return;
+      }
+
+      // run once immediately when enabled
+      requestLivePreview(kind);
+    };
+    toggle.addEventListener('change', onToggle);
+    onToggle();
+
+    const watchEl = (el) => {
+      if (!el) return;
+      const tag = String(el.tagName || '').toUpperCase();
+      const type = (el.getAttribute && el.getAttribute('type')) ? String(el.getAttribute('type')) : '';
+      const isButton = tag === 'BUTTON';
+      const events = isButton ? ['click'] : (type === 'checkbox' || type === 'radio') ? ['change'] : ['input', 'change'];
+      events.forEach((ev) => {
+        el.addEventListener(ev, () => {
+          if (!st.enabled) return;
+          requestLivePreview(kind);
+        });
+      });
+    };
+
+    (cfg.watchIds || []).forEach((id) => watchEl(document.getElementById(id)));
+    (cfg.watchNames || []).forEach((name) => {
+      document.querySelectorAll(`input[name="${name}"]`).forEach((el) => watchEl(el));
+    });
+  };
+
+  Object.keys(livePreviewRegistry).forEach(wire);
+}
+
 function initPanel() {
   // Catch runtime errors and surface them into the log when possible.
   try {
@@ -2151,6 +2957,8 @@ function initPanel() {
   const gridSettingsEl = document.getElementById('grid-settings');
   const singleFormatEl = document.getElementById('single-format-settings');
   const multiFormatEl = document.getElementById('multi-format-settings');
+  const multiNeedsFrameHintEl = document.getElementById('help-multi-format-needs-frame');
+  const scaleFrameEl = document.getElementById('scale-frame');
 
   const updateGridSettingsUI = () => {
     if (!gridSettingsEl) return;
@@ -2163,6 +2971,12 @@ function initPanel() {
     const mode = getCheckedRadioValue('format-mode', 'single');
     setVisible(singleFormatEl, mode === 'single', 'block');
     setVisible(multiFormatEl, mode === 'multi', 'block');
+
+    if (multiNeedsFrameHintEl) {
+      const scaleFrameChecked = !!(scaleFrameEl && scaleFrameEl.checked);
+      setVisible(multiNeedsFrameHintEl, mode === 'multi' && !scaleFrameChecked, 'block');
+    }
+
     appendLog(`UI: format-settings mode=${mode}`);
   };
 
@@ -2173,6 +2987,9 @@ function initPanel() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const targetTab = tab.getAttribute('data-tab');
+
+      // Live preview should be temporary: revert when switching tabs.
+      try { revertAllLivePreviews(); } catch (_) { }
 
       // Update tabs
       tabs.forEach(t => t.classList.remove('active'));
@@ -2187,6 +3004,17 @@ function initPanel() {
       if (targetEl) {
         targetEl.classList.add('active');
         targetEl.style.display = 'block';
+
+        // If live preview is enabled for this tab, run once.
+        try {
+          if (targetTab === 'resize') requestLivePreview('resize');
+          else if (targetTab === 'distribute') requestLivePreview('distribute');
+          else if (targetTab === 'distribute-scale') requestLivePreview('distributeScale');
+          else if (targetTab === 'tools') {
+            requestLivePreview('fitToFrame');
+            requestLivePreview('centerContent');
+          }
+        } catch (_) { }
       } else {
         appendLog(`Tab nicht gefunden: ${targetTab}`);
       }
@@ -2253,6 +3081,12 @@ function initPanel() {
   setupRadioGroup('scale-mode');
   setupRadioGroup('format-mode', updateFormatModeUI);
 
+  if (scaleFrameEl) {
+    scaleFrameEl.addEventListener('change', () => {
+      try { updateFormatModeUI(); } catch (_) { }
+    });
+  }
+
   // Format Mode Toggle
   const formatModeRadios = document.querySelectorAll('input[name="format-mode"]');
   formatModeRadios.forEach(radio => {
@@ -2269,7 +3103,10 @@ function initPanel() {
   // Multi-Format Buttons
   const addFormatBtn = document.getElementById('add-format-btn');
   if (addFormatBtn) {
-    addFormatBtn.addEventListener('click', addFormat);
+    addFormatBtn.addEventListener('click', () => {
+      addFormat();
+      try { requestLivePreview('distributeScale'); } catch (_) { }
+    });
   }
 
   const cancelEditFormatBtn = document.getElementById('cancel-edit-format-btn');
@@ -2289,7 +3126,10 @@ function initPanel() {
 
   const clearFormatsBtn = document.getElementById('clear-formats-btn');
   if (clearFormatsBtn) {
-    clearFormatsBtn.addEventListener('click', clearFormats);
+    clearFormatsBtn.addEventListener('click', () => {
+      clearFormats();
+      try { requestLivePreview('distributeScale'); } catch (_) { }
+    });
   }
 
   // Initialize format list
@@ -2308,9 +3148,91 @@ function initPanel() {
   const toggleScaleFormatsToFit = document.getElementById('scale-formats-to-fit');
   const selectMultiLayoutStyle = document.getElementById('multi-layout-style');
   const masonrySettingsEl = document.getElementById('masonry-settings');
+  const overlapElementsEl = document.getElementById('overlap-elements');
+  const spacingEl = document.getElementById('spacing');
   const inputMasonryCols = document.getElementById('masonry-cols');
+  const selectMasonryPreset = document.getElementById('masonry-preset');
+  const selectMasonryCountMode = document.getElementById('masonry-count-mode');
+  const masonryTargetCountRow = document.getElementById('masonry-target-count-row');
+  const inputMasonryTargetCount = document.getElementById('masonry-target-count');
   const inputMasonrySeed = document.getElementById('masonry-seed');
   const toggleMasonryFillPage = document.getElementById('masonry-fill-page');
+  const toggleMasonryUniformColWidth = document.getElementById('masonry-uniform-col-width');
+
+  // Layout spacing: "Elemente überlappen" -> spacing=0 and disable spacing input.
+  let lastSpacingBeforeOverlap = null;
+  const applyOverlapSpacingUI = () => {
+    const enabled = !!(overlapElementsEl && overlapElementsEl.checked);
+    pluginSettings.overlapElements = enabled;
+
+    if (spacingEl) {
+      if (enabled) {
+        if (lastSpacingBeforeOverlap === null) lastSpacingBeforeOverlap = String(spacingEl.value ?? '');
+        spacingEl.value = '0';
+        spacingEl.disabled = true;
+      } else {
+        spacingEl.disabled = false;
+        if (String(spacingEl.value ?? '') === '0' && lastSpacingBeforeOverlap !== null) {
+          spacingEl.value = lastSpacingBeforeOverlap;
+        }
+        lastSpacingBeforeOverlap = null;
+      }
+    }
+
+    if (settingsReady) queueSaveSettings();
+    try { requestLivePreview('distributeScale'); } catch (_) { }
+  };
+
+  if (overlapElementsEl) {
+    overlapElementsEl.addEventListener('change', applyOverlapSpacingUI);
+  }
+
+  // Masonry preset/count UI
+  const applyMasonryPresetUI = () => {
+    const preset = selectMasonryPreset ? String(selectMasonryPreset.value || 'custom') : String(pluginSettings.masonryPreset || 'custom');
+    pluginSettings.masonryPreset = preset;
+
+    const isCustom = preset === 'custom';
+    if (inputMasonryCols) {
+      inputMasonryCols.disabled = !isCustom;
+      // For fixed presets, reflect the value in the input for transparency.
+      if (!isCustom && /^cols-\d+$/.test(preset)) {
+        const n = parseInt(preset.replace('cols-', ''), 10);
+        if (Number.isFinite(n) && n > 0) inputMasonryCols.value = String(n);
+      }
+    }
+
+    if (settingsReady) queueSaveSettings();
+    try { requestLivePreview('distributeScale'); } catch (_) { }
+  };
+
+  const applyMasonryCountUI = () => {
+    const mode = selectMasonryCountMode ? String(selectMasonryCountMode.value || 'selection') : String(pluginSettings.masonryCountMode || 'selection');
+    pluginSettings.masonryCountMode = mode;
+
+    setVisible(masonryTargetCountRow, mode === 'manual', 'flex');
+    if (inputMasonryTargetCount) {
+      inputMasonryTargetCount.disabled = mode !== 'manual';
+    }
+
+    if (settingsReady) queueSaveSettings();
+    try { requestLivePreview('distributeScale'); } catch (_) { }
+  };
+
+  if (selectMasonryPreset) {
+    selectMasonryPreset.addEventListener('change', applyMasonryPresetUI);
+  }
+  if (selectMasonryCountMode) {
+    selectMasonryCountMode.addEventListener('change', applyMasonryCountUI);
+  }
+  if (inputMasonryTargetCount) {
+    inputMasonryTargetCount.addEventListener('input', () => {
+      const v = parseInt(String(inputMasonryTargetCount.value || ''), 10);
+      pluginSettings.masonryTargetCount = Number.isFinite(v) && v > 0 ? v : 0;
+      if (settingsReady) queueSaveSettings();
+      try { requestLivePreview('distributeScale'); } catch (_) { }
+    });
+  }
 
   const setLogEnabled = (enabled) => {
     const next = !!enabled;
@@ -2511,6 +3433,14 @@ function initPanel() {
     });
   }
 
+  if (toggleMasonryUniformColWidth) {
+    toggleMasonryUniformColWidth.addEventListener('change', () => {
+      pluginSettings.masonryUniformColWidth = !!toggleMasonryUniformColWidth.checked;
+      if (settingsReady) queueSaveSettings();
+      try { requestLivePreview('distributeScale'); } catch (_) { }
+    });
+  }
+
   // Proportion lock button
   const lockBtn = document.getElementById('lock-proportion');
   lockBtn.addEventListener('click', () => {
@@ -2566,9 +3496,9 @@ function initPanel() {
   const applyDistributeBtn = document.getElementById('apply-distribute-btn');
   const applyDistributeScaleBtn = document.getElementById('apply-distribute-scale-btn');
 
-  if (applyResizeBtn) applyResizeBtn.addEventListener('click', applyResize);
-  if (applyDistributeBtn) applyDistributeBtn.addEventListener('click', applyDistribute);
-  if (applyDistributeScaleBtn) applyDistributeScaleBtn.addEventListener('click', applyDistributeScale);
+  if (applyResizeBtn) applyResizeBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('resize', applyResize); });
+  if (applyDistributeBtn) applyDistributeBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('distribute', applyDistribute); });
+  if (applyDistributeScaleBtn) applyDistributeScaleBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('distributeScale', applyDistributeScale); });
 
   const copyLogBtn = document.getElementById('copy-log-btn');
   if (copyLogBtn) {
@@ -2583,172 +3513,16 @@ function initPanel() {
   // Tools Tab Buttons
   const centerContentBtn = document.getElementById('center-content-btn');
   if (centerContentBtn) {
-    centerContentBtn.addEventListener('click', async () => {
-      try {
-        const doc = getActiveDocumentSafe();
-        if (!doc) {
-          showMessage(t('msg.noActiveDocument'), true);
-          return;
-        }
-        if (!doc || !doc.selection || doc.selection.length === 0) {
-          showMessage(t('msg.noSelection'), true);
-          return;
-        }
-
-        let processed = 0;
-        let skipped = 0;
-
-        for (let i = 0; i < doc.selection.length; i++) {
-          const frame = doc.selection[i];
-
-          // Prüfe ob das Objekt eine fit-Methode hat (Rahmen mit Inhalt)
-          if (frame && frame.fit && FitOptions) {
-            try {
-              frame.fit(FitOptions.CENTER_CONTENT);
-              processed++;
-              const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-              appendLog(`Center Content -> ${label}: Content zentriert`);
-            } catch (fitErr) {
-              appendLog(`Fehler beim Zentrieren von Objekt ${i}: ${fitErr.message}`);
-              skipped++;
-            }
-          } else {
-            skipped++;
-          }
-        }
-
-        appendLog(`Center Content: ${processed} Rahmen zentriert, ${skipped} übersprungen`);
-
-        if (processed === 0) {
-          showMessage(t('msg.noFramesWithContent'), true);
-        } else {
-          showMessage(t('msg.centeredFrames', { count: processed }));
-        }
-      } catch (e) {
-        showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
-        appendLog("Center Content Fehler: " + e.message);
-      }
-    });
+    centerContentBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('centerContent', applyCenterContent); });
   }
 
   const scaleToFrameBtn = document.getElementById('scale-to-frame-btn');
   if (scaleToFrameBtn) {
-    scaleToFrameBtn.addEventListener('click', async () => {
-      try {
-        const doc = getActiveDocumentSafe();
-        if (!doc) {
-          showMessage(t('msg.noActiveDocument'), true);
-          return;
-        }
-        if (!doc || !doc.selection || doc.selection.length === 0) {
-          showMessage(t('msg.noSelection'), true);
-          return;
-        }
-
-        const mode = getCheckedRadioValue('scale-mode', 'fit-vert');
-
-        let processed = 0;
-        for (let i = 0; i < doc.selection.length; i++) {
-          const frame = doc.selection[i];
-          if (frame && frame.allGraphics && frame.allGraphics.length > 0 && frame.geometricBounds) {
-            const frameBounds = frame.geometricBounds;
-            const frameWidth = frameBounds[3] - frameBounds[1];
-            const frameHeight = frameBounds[2] - frameBounds[0];
-
-            for (let g = 0; g < frame.allGraphics.length; g++) {
-              const graphic = frame.allGraphics[g];
-              if (!graphic || !graphic.geometricBounds) continue;
-
-              try {
-                // Reset scaling
-                graphic.absoluteHorizontalScale = 100;
-                graphic.absoluteVerticalScale = 100;
-
-                const gb = graphic.geometricBounds;
-                const gw = gb[3] - gb[1];
-                const gh = gb[2] - gb[0];
-
-                if (gw <= 0 || gh <= 0 || frameWidth <= 0 || frameHeight <= 0) continue;
-
-                let scaleX = 100;
-                let scaleY = 100;
-
-                if (mode === 'stretch') {
-                  // Echtes Strecken: Setze Breite UND Höhe unabhängig (verzerrt)
-                  scaleX = (frameWidth / gw) * 100;
-                  scaleY = (frameHeight / gh) * 100;
-                  appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(1)}%, scaleY=${scaleY.toFixed(1)}%`);
-                } else if (mode === 'fill') {
-                  // Ausfüllen: Wähle pro Objekt ob horizontal oder vertikal angepasst wird
-                  // Ziel: Rahmen wird gefüllt, Content >= Rahmen in beiden Dimensionen
-                  const scaleToFitWidth = (frameWidth / gw) * 100;
-                  const scaleToFitHeight = (frameHeight / gh) * 100;
-
-                  // Wähle die Richtung wo mehr Skalierung nötig ist (= größerer Faktor)
-                  // Damit wird der Content mindestens so groß wie der Rahmen in beiden Dimensionen
-                  if (scaleToFitWidth > scaleToFitHeight) {
-                    // Horizontal braucht mehr Skalierung -> nutze horizontal
-                    const s = scaleToFitWidth;
-                    scaleX = s;
-                    scaleY = s;
-                    const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                    appendLog(`  -> Fill (horz) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% > ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
-                  } else {
-                    // Vertikal braucht mehr Skalierung -> nutze vertikal
-                    const s = scaleToFitHeight;
-                    scaleX = s;
-                    scaleY = s;
-                    const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                    appendLog(`  -> Fill (vert) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% < ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
-                  }
-                } else if (mode === 'fit-vert') {
-                  const s = (frameHeight / gh) * 100;
-                  scaleX = s;
-                  scaleY = s;
-                } else if (mode === 'fit-horz') {
-                  const s = (frameWidth / gw) * 100;
-                  scaleX = s;
-                  scaleY = s;
-                }
-
-                // Verwende absoluteHorizontalScale/absoluteVerticalScale für unabhängige Skalierung
-                graphic.absoluteHorizontalScale = scaleX;
-                graphic.absoluteVerticalScale = scaleY;
-
-                // Zentriere die Grafik nach dem Skalieren
-                if (frame.fit && FitOptions) {
-                  frame.fit(FitOptions.CENTER_CONTENT);
-                } else {
-                  // Manuelle Zentrierung
-                  const newGB = graphic.geometricBounds;
-                  const graphicWidth = newGB[3] - newGB[1];
-                  const graphicHeight = newGB[2] - newGB[0];
-                  const frameCenterX = frameBounds[1] + frameWidth / 2;
-                  const frameCenterY = frameBounds[0] + frameHeight / 2;
-
-                  graphic.geometricBounds = [
-                    frameCenterY - graphicHeight / 2,
-                    frameCenterX - graphicWidth / 2,
-                    frameCenterY + graphicHeight / 2,
-                    frameCenterX + graphicWidth / 2
-                  ];
-                }
-              } catch (err) {
-                appendLog(`Grafik konnte nicht skaliert werden: ${err.message}`);
-              }
-            }
-            processed++;
-          }
-        }
-
-        appendLog(`Scale to Frame (${mode}): ${processed} Rahmen verarbeitet`);
-        showMessage(t('msg.scaledFrames', { count: processed, mode }));
-      } catch (e) {
-        showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
-        appendLog("Scale to Frame Fehler: " + e.message);
-      }
-    });
+    scaleToFrameBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('fitToFrame', applyFitToFrame); });
   }
+
+  // Live preview wiring (checkboxes + debounced change listeners)
+  initLivePreviewWiring();
 
   // Async init: load saved settings, apply language/tooltips, sync UI controls
   void (async () => {
@@ -2770,6 +3544,14 @@ function initPanel() {
     if (inputMasonryCols) inputMasonryCols.value = String(pluginSettings.masonryCols ?? 3);
     if (inputMasonrySeed) inputMasonrySeed.value = String(pluginSettings.masonrySeed ?? '');
     if (toggleMasonryFillPage) toggleMasonryFillPage.checked = !!pluginSettings.masonryFillPage;
+    if (toggleMasonryUniformColWidth) toggleMasonryUniformColWidth.checked = !!pluginSettings.masonryUniformColWidth;
+    if (overlapElementsEl) overlapElementsEl.checked = !!pluginSettings.overlapElements;
+    if (selectMasonryPreset) selectMasonryPreset.value = String(pluginSettings.masonryPreset || 'custom');
+    if (selectMasonryCountMode) selectMasonryCountMode.value = String(pluginSettings.masonryCountMode || 'selection');
+    if (inputMasonryTargetCount) {
+      const v = parseInt(String(pluginSettings.masonryTargetCount || ''), 10);
+      if (Number.isFinite(v) && v > 0) inputMasonryTargetCount.value = String(v);
+    }
     setVisible(masonrySettingsEl, (pluginSettings.multiLayoutStyle || 'grid') === 'masonry', 'block');
     if (selectLanguage) selectLanguage.value = getLanguage();
 
@@ -2784,6 +3566,11 @@ function initPanel() {
     applyLanguageToUI();
     applyTooltips();
     applyLogVisibility();
+
+    // Apply dependent UI state (after settings load)
+    try { applyOverlapSpacingUI(); } catch (_) { }
+    try { applyMasonryPresetUI(); } catch (_) { }
+    try { applyMasonryCountUI(); } catch (_) { }
 
     // Ensure format list reflects loaded settings
     renderFormatList();

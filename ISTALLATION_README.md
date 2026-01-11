@@ -5,6 +5,8 @@
 2. Install the .ccx file.
 3. Enjoy the Plugin.
 
+### Adobe does not allow automatic .ccx creation, so the installation files in the builds folder might not be always be up to date. If you want to make sure you have the latest Version but install it as a .ccx so you do not have to permanently enable developer mode install as describer below and create your own .ccx using the Adobe UXP Developer Tool ###
+
 # Install the Cloud Plugin // coming soon //
 1. // coming soon //
 

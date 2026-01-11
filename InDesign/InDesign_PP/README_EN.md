@@ -12,6 +12,8 @@ A UXP panel for Adobe InDesign to quickly resize, distribute, and generate layou
 
 ## Features & Usage
 
+Note: Most actions have a **Live Preview** checkbox directly above their button. When enabled, changing relevant inputs auto-runs the action (without popups) and reverts when you disable it or switch tabs.
+
 ### 1) 📐 Size (Resize)
 
 - Enter target size in **mm** (width/height)
@@ -53,7 +55,19 @@ Steps:
 - **Auto scale formats to fit**: scales all multi formats down proportionally so the largest format fits the target area
 - Layout style:
   - **Grid**
-  - **Masonry (columns)** with settings: **Columns**, **Seed** (deterministic shuffle), **Fill page**
+  - **Masonry (columns)** with settings:
+    - **Preset** (Auto / fixed columns / Manual)
+    - **Columns** (for “Manual”)
+    - **Frame count**: “Frames = selection” or manual (creates extra empty frames)
+    - **Uniform column width**: scales all frames to a shared column width (height proportional)
+    - **Seed** (deterministic shuffle)
+    - **Fill page** (optionally creates extra empty frames)
+
+Important in Multi mode:
+- **“Frame” must be enabled**, otherwise format sizes can’t be applied (the UI shows an inline hint).
+
+Layout extras:
+- **“Elements overlap”**: forces spacing to 0 and disables the spacing input (no gaps).
 
 ### 4) 🛠 Tools
 

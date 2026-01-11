@@ -12,6 +12,8 @@ Ein UXP-Panel für Adobe InDesign zum schnellen Skalieren, Verteilen und Layoute
 
 ## Features & Verwendung
 
+Hinweis: Viele Aktionen haben eine **Live-Vorschau** Checkbox direkt über dem jeweiligen Button. Wenn aktiv, wird die Aktion bei Änderungen an den Eingaben automatisch (ohne Popups) ausgeführt und beim Deaktivieren/Tab-Wechsel wieder zurückgesetzt.
+
 ### 1) 📐 Größe (Größenzuweisung)
 
 - Zielgröße in **mm** eingeben (Breite/Höhe)
@@ -53,7 +55,19 @@ Schritte:
 - **Formate automatisch an Seite anpassen**: skaliert alle Multi-Formate proportional herunter, damit das größte Format überhaupt in den Bereich passt
 - Layout-Stil:
   - **Raster** (klassisch)
-  - **Masonry (Spalten)** mit Einstellungen: **Spalten**, **Seed** (reproduzierbare Shuffle-Reihenfolge), **Seite auffüllen**
+  - **Masonry (Spalten)** mit Einstellungen:
+    - **Preset** (Auto / fixe Spaltenzahl / Manuell)
+    - **Spalten** (bei „Manuell“)
+    - **Rahmenanzahl**: „Rahmen = Auswahl“ oder manuell (erstellt zusätzliche leere Rahmen)
+    - **Einheitliche Spaltenbreite**: skaliert alle Rahmen auf eine gemeinsame Spaltenbreite (Höhe proportional)
+    - **Seed** (reproduzierbare Shuffle-Reihenfolge)
+    - **Seite auffüllen** (optional zusätzliche leere Rahmen)
+
+Wichtig im Multi-Modus:
+- **„Rahmen“ muss aktiviert sein**, sonst können die Formatgrößen nicht angewendet werden (UI zeigt dazu einen Hinweis).
+
+Zusatz im Layout-Tab:
+- **„Elemente überlappen“**: setzt Abstand auf 0 und deaktiviert die Abstandseingabe (keine Zwischenräume).
 
 ### 4) 🛠 Tools
 
