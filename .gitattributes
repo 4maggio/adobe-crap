@@ -1,0 +1,20 @@
+# Keep line endings consistent across OSes
+# - Store text files as LF in the repo
+# - Let Git handle conversion on checkout where appropriate
+* text=auto eol=lf
+
+# Explicit binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.7z binary
+*.pdf binary
+
+# Windows-native scripts
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
