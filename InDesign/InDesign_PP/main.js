@@ -1751,8 +1751,16 @@ async function applyDistributeScale() {
     }
 
     if (items.length === 0) {
-      showMessage(t('msg.noBounds'), true);
-      return;
+      // Check if we can create empty frames from formats
+      const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
+      const hasFormats = definedFormats && definedFormats.length > 0;
+      
+      if (!allowEmptyFramesEl || !allowEmptyFramesEl.checked || !hasFormats) {
+        showMessage(t('msg.noBounds'), true);
+        return;
+      }
+      
+      appendLog(`📭 Keine Objekte ausgewählt - erstelle ${definedFormats.reduce((sum, f) => sum + (f.min || 0), 0)} leere Rahmen aus Preset`);
     }
 
     // Bestimme Verteilungsbereich
@@ -3091,9 +3099,9 @@ const layoutPresets = {
   'hero-center': {
     formats: [
       { widthPct: 20, heightPct: 30, min: 1, max: 1 },  // Left top: small
-      { widthPct: 40, heightPct: 15, min: 1, max: 1 },  // Center top: spacer
+      { widthPct: 35, heightPct: 20, min: 1, max: 1 },  // Center top: spacer (increased from 15%)
       { widthPct: 20, heightPct: 30, min: 1, max: 1 },  // Right top: small
-      { widthPct: 40, heightPct: 55, min: 1, max: 1 },  // Center: Hero (vertically centered)
+      { widthPct: 35, heightPct: 50, min: 1, max: 1 },  // Center: Hero (reduced from 55%)
       { widthPct: 20, heightPct: 30, min: 3, max: 0 }   // Remaining: fill left+right columns
     ],
     mode: 'multi',
@@ -3106,8 +3114,8 @@ const layoutPresets = {
   },
   'masonry-2col': {
     formats: [
-      { widthPct: 30, heightPct: 34, min: 0, max: 0 },
-      { widthPct: 30, heightPct: 40, min: 0, max: 0 }
+      { widthPct: 45, heightPct: 34, min: 0, max: 0 },  // Increased from 30% for proper 2-col layout
+      { widthPct: 45, heightPct: 40, min: 0, max: 0 }
     ],
     mode: 'multi',
     layoutStyle: 'masonry',
@@ -3117,9 +3125,9 @@ const layoutPresets = {
   },
   'masonry-3col': {
     formats: [
-      { widthPct: 24, heightPct: 27, min: 0, max: 0 },
-      { widthPct: 24, heightPct: 40, min: 0, max: 0 },
-      { widthPct: 24, heightPct: 34, min: 0, max: 0 }
+      { widthPct: 30, heightPct: 27, min: 0, max: 0 },  // Increased from 24% for proper 3-col layout
+      { widthPct: 30, heightPct: 40, min: 0, max: 0 },
+      { widthPct: 30, heightPct: 34, min: 0, max: 0 }
     ],
     mode: 'multi',
     layoutStyle: 'masonry',
@@ -3163,10 +3171,10 @@ const layoutPresets = {
   'hero-stack': {
     formats: [
       { widthPct: 20, heightPct: 28, min: 2, max: 2 },  // Left: 2 small
-      { widthPct: 40, heightPct: 12, min: 1, max: 1 },  // Center top: small spacer
+      { widthPct: 35, heightPct: 15, min: 1, max: 1 },  // Center top: spacer (increased from 12%)
       { widthPct: 20, heightPct: 28, min: 2, max: 2 },  // Right: 2 small
-      { widthPct: 40, heightPct: 45, min: 1, max: 1 },  // Center: Hero
-      { widthPct: 40, heightPct: 12, min: 1, max: 1 },  // Center bottom: small spacer
+      { widthPct: 35, heightPct: 42, min: 1, max: 1 },  // Center: Hero (reduced from 45%)
+      { widthPct: 35, heightPct: 15, min: 1, max: 1 },  // Center bottom: spacer (increased from 12%)
       { widthPct: 20, heightPct: 28, min: 0, max: 0 }   // Additional small for sides
     ],
     mode: 'multi',
@@ -3429,6 +3437,28 @@ function initPanel() {
   if (logEl && logBuffer.length === 0) {
     if (String(logEl.textContent || '').trim() === 'Log bereit…') logEl.textContent = '';
   }
+
+  // Track selection changes and log object count
+  let lastSelectionCount = -1;
+  const checkSelection = () => {
+    try {
+      const { app } = require('indesign');
+      if (app && app.activeDocument && app.activeDocument.selection) {
+        const count = app.activeDocument.selection.length;
+        if (count !== lastSelectionCount) {
+          lastSelectionCount = count;
+          appendLog(`📋 Auswahl: ${count} Objekt(e)`);
+        }
+      }
+    } catch (e) {
+      // Ignore - no document open or other error
+    }
+  };
+  
+  // Poll every 500ms for selection changes
+  setInterval(checkSelection, 500);
+  // Initial check
+  setTimeout(checkSelection, 100);
 
   const gridSettingsEl = document.getElementById('grid-settings');
   const singleFormatEl = document.getElementById('single-format-settings');
