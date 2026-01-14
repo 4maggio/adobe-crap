@@ -591,6 +591,86 @@
       user-select: text;
     }
 
+    /* Preset Grid */
+    .preset-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+      width: 100%;
+    }
+
+    .preset-card {
+      border: 2px solid var(--uxp-color-divider, #d3d3d3);
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--uxp-color-surface-primary, #ffffff);
+      min-height: 100px;
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 calc(50% - 6px);
+      max-width: calc(50% - 6px);
+    }
+
+    .preset-card:hover {
+      border-color: var(--uxp-color-accent-blue-500, #2680EB);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .preset-card.selected {
+      border-color: var(--uxp-color-accent-blue-500, #2680EB);
+      background: var(--uxp-color-accent-blue-100, #E3F2FD);
+    }
+
+    .preset-preview {
+      width: 100%;
+      height: auto;
+      min-height: 60px;
+      display: block;
+      border-radius: 4px;
+      background: var(--uxp-color-surface-gray-100, #f5f5f5);
+      flex-shrink: 0;
+    }
+
+    .preset-name {
+      font-weight: 600;
+      font-size: 12px;
+      margin-top: 6px;
+      color: var(--uxp-color-text-primary, #323232);
+    }
+
+    .preset-desc {
+      font-size: 10px;
+      color: var(--uxp-color-text-secondary, #6e6e6e);
+      margin-top: 2px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .preset-card {
+        border-color: var(--uxp-color-divider, #4a4a4a);
+        background: var(--uxp-color-surface-secondary, #2a2a2a);
+      }
+
+      .preset-card.selected {
+        background: rgba(38, 128, 235, 0.2);
+      }
+
+      .preset-preview {
+        background: var(--uxp-color-surface-gray-800, #1e1e1e);
+      }
+
+      .preset-name {
+        color: var(--uxp-color-text-primary, #e1e1e1);
+      }
+
+      .preset-desc {
+        color: var(--uxp-color-text-secondary, #a0a0a0);
+      }
+    }
+
     #log-container {
       flex: 0 0 auto;
       min-height: 0;
@@ -638,6 +718,10 @@
       <button class="tab" data-tab="distribute-scale" aria-label="Layout">
         <span class="tab-icon" aria-hidden="true">⧉</span>
         <span class="tab-label">Layout</span>
+      </button>
+      <button class="tab" data-tab="presets" aria-label="Presets">
+        <span class="tab-icon" aria-hidden="true">🎨</span>
+        <span class="tab-label">Presets</span>
       </button>
       <button class="tab" data-tab="tools" aria-label="Tools">
         <span class="tab-icon" aria-hidden="true">🛠</span>
@@ -823,11 +907,11 @@
         <div class="radio-group">
           <div class="radio-item">
             <input type="radio" id="format-mode-single" name="format-mode" value="single" checked>
-            <label for="format-mode-single">Einheitsgröße (wie bisher)</label>
+            <label for="format-mode-single">Einheitsgröße</label>
           </div>
           <div class="radio-item">
             <input type="radio" id="format-mode-multi" name="format-mode" value="multi">
-            <label for="format-mode-multi">Mehrere Formate (erweitert)</label>
+            <label for="format-mode-multi">Mehrere Formate</label>
           </div>
         </div>
       </div>
@@ -938,6 +1022,17 @@
         </div>
 
         <div class="form-group">
+          <div class="checkbox-group">
+            <div class="checkbox-item">
+              <input type="checkbox" id="multi-keep-aspect" checked>
+              <label for="multi-keep-aspect" id="label-multi-keep-aspect">Seitenverhältnis beibehalten</label>
+            </div>
+          </div>
+          <div class="helper-text" id="help-multi-keep-aspect">Behält das Seitenverhältnis der Formate bei, wenn sie an
+            die Spaltenbreite angepasst werden.</div>
+        </div>
+
+        <div class="form-group">
           <label for="multi-layout-style" id="label-multi-layout-style">Layout-Stil</label>
           <select id="multi-layout-style">
             <option value="grid">Raster</option>
@@ -1023,7 +1118,161 @@
       </div>
     </div>
 
-    <!-- Tab 4: Tools -->
+    <!-- Tab 4: Presets -->
+    <div id="tab-presets" class="tab-content">
+      <div class="form-group">
+        <h3 class="section-title" id="title-presets">Layout Presets</h3>
+        <p class="helper-text" id="help-presets">Wähle ein vordefiniertes Layout für deine Seite. Perfekt für
+          Fotokalender und Fotobücher.</p>
+      </div>
+
+      <div id="preset-grid" class="preset-grid">
+        <!-- Hero Center -->
+        <div class="preset-card" data-preset="hero-center">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="25" y="10" width="50" height="50" fill="#4CAF50" opacity="0.7" />
+            <rect x="10" y="10" width="12" height="12" fill="#2196F3" opacity="0.7" />
+            <rect x="10" y="25" width="12" height="12" fill="#2196F3" opacity="0.7" />
+            <rect x="10" y="40" width="12" height="12" fill="#2196F3" opacity="0.7" />
+            <rect x="78" y="10" width="12" height="12" fill="#2196F3" opacity="0.7" />
+            <rect x="78" y="25" width="12" height="12" fill="#2196F3" opacity="0.7" />
+            <rect x="78" y="40" width="12" height="12" fill="#2196F3" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-hero-center">Hero Center</div>
+          <div class="preset-desc" id="preset-desc-hero-center">1 großes Bild zentral, kleinere rundherum</div>
+        </div>
+
+        <!-- Hero Stack -->
+        <div class="preset-card" data-preset="hero-stack">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="25" height="28" fill="#2196F3" opacity="0.7" />
+            <rect x="5" y="35" width="25" height="28" fill="#2196F3" opacity="0.7" />
+            <rect x="35" y="5" width="30" height="12" fill="#4CAF50" opacity="0.7" />
+            <rect x="35" y="20" width="30" height="30" fill="#4CAF50" opacity="0.8" />
+            <rect x="35" y="53" width="30" height="10" fill="#4CAF50" opacity="0.7" />
+            <rect x="70" y="5" width="25" height="28" fill="#FF9800" opacity="0.7" />
+            <rect x="70" y="35" width="25" height="28" fill="#FF9800" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-hero-stack">Hero Stack</div>
+          <div class="preset-desc" id="preset-desc-hero-stack">3 Bilder vertikal in Mitte</div>
+        </div>
+
+        <!-- Masonry 2 Columns -->
+        <div class="preset-card" data-preset="masonry-2col">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="43" height="30" fill="#FF9800" opacity="0.7" />
+            <rect x="5" y="37" width="43" height="20" fill="#FF9800" opacity="0.7" />
+            <rect x="52" y="5" width="43" height="20" fill="#9C27B0" opacity="0.7" />
+            <rect x="52" y="27" width="43" height="30" fill="#9C27B0" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-masonry-2">Masonry 2 Spalten</div>
+          <div class="preset-desc" id="preset-desc-masonry-2">Variable Höhen, 2 Spalten</div>
+        </div>
+
+        <!-- Masonry 3 Columns -->
+        <div class="preset-card" data-preset="masonry-3col">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="28" height="25" fill="#E91E63" opacity="0.7" />
+            <rect x="5" y="32" width="28" height="20" fill="#E91E63" opacity="0.7" />
+            <rect x="36" y="5" width="28" height="20" fill="#3F51B5" opacity="0.7" />
+            <rect x="36" y="27" width="28" height="25" fill="#3F51B5" opacity="0.7" />
+            <rect x="67" y="5" width="28" height="30" fill="#00BCD4" opacity="0.7" />
+            <rect x="67" y="37" width="28" height="15" fill="#00BCD4" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-masonry-3">Masonry 3 Spalten</div>
+          <div class="preset-desc" id="preset-desc-masonry-3">Variable Höhen, 3 Spalten</div>
+        </div>
+
+        <!-- Grid 2x2 -->
+        <div class="preset-card" data-preset="grid-2x2">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="43" height="28" fill="#607D8B" opacity="0.7" />
+            <rect x="52" y="5" width="43" height="28" fill="#607D8B" opacity="0.7" />
+            <rect x="5" y="37" width="43" height="28" fill="#607D8B" opacity="0.7" />
+            <rect x="52" y="37" width="43" height="28" fill="#607D8B" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-grid-2x2">Grid 2×2</div>
+          <div class="preset-desc" id="preset-desc-grid-2x2">Gleichmäßiges 2×2 Raster</div>
+        </div>
+
+        <!-- Grid 3x3 -->
+        <div class="preset-card" data-preset="grid-3x3">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="36" y="5" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="67" y="5" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="5" y="26" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="36" y="26" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="67" y="26" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="5" y="47" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="36" y="47" width="28" height="18" fill="#795548" opacity="0.7" />
+            <rect x="67" y="47" width="28" height="18" fill="#795548" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-grid-3x3">Grid 3×3</div>
+          <div class="preset-desc" id="preset-desc-grid-3x3">Gleichmäßiges 3×3 Raster</div>
+        </div>
+
+        <!-- L-Layout -->
+        <div class="preset-card" data-preset="l-layout">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="55" height="60" fill="#009688" opacity="0.7" />
+            <rect x="64" y="5" width="31" height="18" fill="#FFC107" opacity="0.7" />
+            <rect x="64" y="26" width="31" height="18" fill="#FFC107" opacity="0.7" />
+            <rect x="64" y="47" width="31" height="18" fill="#FFC107" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-l-layout">L-Layout</div>
+          <div class="preset-desc" id="preset-desc-l-layout">Großes Bild links, Galerie rechts</div>
+        </div>
+
+        <!-- Magazine Style -->
+        <div class="preset-card" data-preset="magazine">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="58" height="35" fill="#8BC34A" opacity="0.7" />
+            <rect x="5" y="43" width="28" height="22" fill="#FFEB3B" opacity="0.7" />
+            <rect x="35" y="43" width="28" height="22" fill="#FFEB3B" opacity="0.7" />
+            <rect x="67" y="5" width="28" height="60" fill="#F44336" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-magazine">Magazin-Stil</div>
+          <div class="preset-desc" id="preset-desc-magazine">Asymmetrisch, dynamisch</div>
+        </div>
+
+        <!-- Collage -->
+        <div class="preset-card" data-preset="collage">
+          <svg viewBox="0 0 100 70" class="preset-preview">
+            <rect x="2" y="2" width="96" height="66" fill="none" stroke="#666" stroke-width="0.5" />
+            <rect x="5" y="5" width="35" height="25" fill="#673AB7" opacity="0.7" />
+            <rect x="43" y="5" width="25" height="25" fill="#9C27B0" opacity="0.7" />
+            <rect x="71" y="5" width="24" height="40" fill="#E91E63" opacity="0.7" />
+            <rect x="5" y="33" width="25" height="32" fill="#3F51B5" opacity="0.7" />
+            <rect x="33" y="33" width="35" height="32" fill="#2196F3" opacity="0.7" />
+            <rect x="71" y="48" width="24" height="17" fill="#00BCD4" opacity="0.7" />
+          </svg>
+          <div class="preset-name" id="preset-name-collage">Collage</div>
+          <div class="preset-desc" id="preset-desc-collage">Freie Anordnung, gemischte Größen</div>
+        </div>
+      </div>
+
+      <div class="preview-toggle">
+        <div class="checkbox-item">
+          <input type="checkbox" id="preview-preset">
+          <label for="preview-preset" id="label-preview-preset">Live-Vorschau</label>
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn-secondary" id="transfer-preset-btn">In Layout-Tab übernehmen</button>
+        <button class="btn-primary" id="apply-preset-btn">Preset anwenden</button>
+      </div>
+    </div>
+
+    <!-- Tab 5: Tools -->
     <div id="tab-tools" class="tab-content">
       <div class="form-group">
         <p class="helper-text" id="help-tools">Zusätzliche Werkzeuge für die Arbeit mit Rahmen und Inhalten.</p>

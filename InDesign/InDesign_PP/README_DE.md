@@ -40,7 +40,7 @@ Schritte:
 
 ### 3) ⧉ Layout (Verteilen & Skalieren)
 
-#### Single-Modus (wie bisher)
+#### Single-Modus 
 
 - Abstand + Bereich wie oben
 - **Was skalieren?** Rahmen, Inhalt oder beides
