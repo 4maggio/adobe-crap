@@ -317,7 +317,18 @@ const I18N = {
     "preset.collage.name": "Collage",
     "preset.collage.desc": "Freie Anordnung, gemischte Größen",
     "msg.presetApplied": "Preset \"{name}\" angewendet",
-    "msg.selectPreset": "Bitte ein Preset auswählen"
+    "msg.selectPreset": "Bitte ein Preset auswählen",
+
+    "title.calendar": "Kalender erstellen",
+    "help.calendar": "Erstelle automatisch ein Kalender-Grid für Wandkalender mit den Tagen des Monats.",
+    "label.calendarYear": "Jahr",
+    "label.calendarMonth": "Monat",
+    "label.calendarStartDay": "Wochenstart",
+    "help.calendarStartDay": "Erster Tag der Woche im Kalender",
+    "label.calendarCellWidth": "Zellbreite",
+    "label.calendarCellHeight": "Zellhöhe",
+    "label.calendarShowWeekNumbers": "Kalenderwochen anzeigen",
+    "btn.createCalendar": "Kalender erstellen"
   },
   en: {
     "tabs.resize": "Size",
@@ -2597,6 +2608,212 @@ function canLivePreviewCenterContent() {
   return hasActiveSelection();
 }
 
+// ============================
+// Calendar Generation
+// ============================
+
+async function createCalendar() {
+  try {
+    const doc = getActiveDocumentSafe();
+    
+    if (!doc) {
+      showMessage('Kein aktives Dokument', true);
+      return;
+    }
+
+    // Check if document has pages
+    appendLog(`Dokument hat ${doc.pages ? doc.pages.length : 0} Seite(n)`);
+    
+    if (!doc.pages || doc.pages.length === 0) {
+      showMessage('Dokument hat keine Seiten', true);
+      return;
+    }
+
+    // Get calendar parameters
+    const year = parseInt(document.getElementById('calendar-year').value, 10);
+    const month = parseInt(document.getElementById('calendar-month').value, 10);
+    const layout = document.getElementById('calendar-layout').value;
+    const startDay = parseInt(document.getElementById('calendar-start-day').value, 10);
+    let cellWidth = parseFloat(document.getElementById('calendar-cell-width').value) || 50;
+    let cellHeight = parseFloat(document.getElementById('calendar-cell-height').value) || 40;
+    const showWeekNumbers = document.getElementById('calendar-show-week-numbers').checked;
+
+    appendLog(`📅 Erstelle Kalender: ${month}/${year}, Layout: ${layout}`);
+
+    // Get first page - try multiple methods
+    let page = null;
+    
+    // Method 1: Direct array access
+    if (doc.pages.length > 0) {
+      page = doc.pages.item(0);
+    }
+    
+    // Method 2: Iterate
+    if (!page && doc.pages.length > 0) {
+      for (let i = 0; i < doc.pages.length; i++) {
+        page = doc.pages[i];
+        if (page) break;
+      }
+    }
+    
+    if (!page) {
+      showMessage('Konnte keine Seite im Dokument finden', true);
+      appendLog(`❌ Page ist null/undefined, doc.pages.length=${doc.pages.length}`);
+      return;
+    }
+    
+    appendLog(`Seite gefunden: ${page.name || 'unbenannt'}`);
+    
+    const bounds = page.bounds;
+    if (!bounds || bounds.length < 4) {
+      showMessage('Konnte Seitengrenzen nicht lesen', true);
+      appendLog(`❌ Bounds ungültig: ${JSON.stringify(bounds)}`);
+      return;
+    }
+    
+    // Calculate page dimensions [top, left, bottom, right]
+    const pageWidth = Math.abs(bounds[3] - bounds[1]);
+    const pageHeight = Math.abs(bounds[2] - bounds[0]);
+    const pageTop = bounds[0];
+    const pageLeft = bounds[1];
+    
+    appendLog(`Seite: ${pageWidth.toFixed(1)}×${pageHeight.toFixed(1)}mm`);
+
+    // Weekday names
+    const weekdaysSunday = ['S', 'M', 'D', 'M', 'D', 'F', 'S']; // Sun-Sat
+    const weekdaysMonday = ['M', 'D', 'M', 'D', 'F', 'S', 'S']; // Mon-Sun
+
+    // Calculate days in month
+    const date = new Date(year, month - 1, 1);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const firstDay = date.getDay(); // 0=Sunday, 6=Saturday
+    
+    // Determine layout configuration
+    let cols, rows, adjustedFirstDay = 0;
+    
+    switch (layout) {
+      case 'single-row':
+        cols = daysInMonth;
+        rows = 1;
+        cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5)); // Auto-fit to page width
+        appendLog(`Single-Row: ${cols} Zellen, Breite: ${cellWidth.toFixed(1)}mm`);
+        break;
+        
+      case 'single-column':
+        cols = 1;
+        rows = daysInMonth;
+        cellHeight = Math.min(cellHeight, pageHeight / (rows + 0.5)); // Auto-fit to page height
+        appendLog(`Single-Column: ${rows} Zellen, Höhe: ${cellHeight.toFixed(1)}mm`);
+        break;
+        
+      case 'two-rows':
+        cols = Math.ceil(daysInMonth / 2);
+        rows = 2;
+        cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5));
+        appendLog(`Zwei Zeilen: ${cols}×2, Breite: ${cellWidth.toFixed(1)}mm`);
+        break;
+        
+      case 'three-rows':
+        cols = Math.ceil(daysInMonth / 3);
+        rows = 3;
+        cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5));
+        appendLog(`Drei Zeilen: ${cols}×3, Breite: ${cellWidth.toFixed(1)}mm`);
+        break;
+        
+      case 'grid':
+      default:
+        // Adjust first day based on week start preference
+        adjustedFirstDay = firstDay;
+        if (startDay === 1) { // Monday start
+          adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+        }
+        cols = 7; // Always 7 columns for days of week
+        rows = Math.ceil((adjustedFirstDay + daysInMonth) / cols);
+        appendLog(`Grid-Layout: 7×${rows}, Offset: ${adjustedFirstDay}`);
+        break;
+    }
+    
+    // Select weekdays array based on start day (only for grid layout)
+    const weekdays = startDay === 1 ? weekdaysMonday : weekdaysSunday;
+    const headerHeight = layout === 'grid' ? cellHeight * 0.6 : 0; // Header only for grid layout
+    const calendarWidth = cols * cellWidth;
+    const calendarHeight = headerHeight + rows * cellHeight;
+
+    // Center calendar on page
+    const startX = pageLeft + (pageWidth - calendarWidth) / 2;
+    const startY = pageTop + (pageHeight - calendarHeight) / 2;
+
+    appendLog(`Kalender-Grid: ${cols}×${rows} = ${daysInMonth} Tage`);
+
+    // Create weekday header row (only for grid layout)
+    if (layout === 'grid') {
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * cellWidth;
+        const y = startY;
+
+        const headerFrame = page.textFrames.add();
+      headerFrame.geometricBounds = [y, x, y + headerHeight, x + cellWidth];
+      headerFrame.contents = weekdays[col];
+      
+      // Add border
+      headerFrame.strokeWeight = 0.5;
+      try {
+        const blackSwatch = doc.swatches.itemByName('Black');
+        if (blackSwatch && blackSwatch.isValid) {
+          headerFrame.strokeColor = blackSwatch;
+        }
+      } catch (e) {
+        // Black swatch not found - skip stroke color
+      }
+    }
+    }
+
+    // Create frames for each day (offset by header height)
+    let day = 1;
+    let createdFrames = 0;
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        // Skip cells before first day (only for grid layout)
+        if (layout === 'grid' && row === 0 && col < adjustedFirstDay) continue;
+        // Stop after last day
+        if (day > daysInMonth) break;
+
+        const x = startX + col * cellWidth;
+        const y = startY + headerHeight + row * cellHeight;
+
+        // Create text frame with proper bounds [top, left, bottom, right]
+        const frame = page.textFrames.add();
+        frame.geometricBounds = [y, x, y + cellHeight, x + cellWidth];
+
+        // Add day number (formatting in InDesign UXP is limited, keep it simple)
+        frame.contents = String(day);
+
+        // Add border
+        frame.strokeWeight = 0.5;
+        try {
+          const blackSwatch = doc.swatches.itemByName('Black');
+          if (blackSwatch && blackSwatch.isValid) {
+            frame.strokeColor = blackSwatch;
+          }
+        } catch (e) {
+          // Black swatch not found - skip stroke color
+        }
+
+        createdFrames++;
+        day++;
+      }
+    }
+
+    appendLog(`✅ ${createdFrames} Kalender-Zellen erstellt`);
+    showMessage(`Kalender erstellt: ${createdFrames} Tage`);
+
+  } catch (error) {
+    showMessage(`Fehler beim Erstellen des Kalenders: ${formatErrorMessage(error)}`, true);
+    console.error(error);
+  }
+}
+
 async function applyCenterContent() {
   try {
     const doc = getActiveDocumentSafe();
@@ -4035,6 +4252,12 @@ function initPanel() {
   const scaleToFrameBtn = document.getElementById('scale-to-frame-btn');
   if (scaleToFrameBtn) {
     scaleToFrameBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('fitToFrame', applyFitToFrame); });
+  }
+
+  // Calendar Tab Button
+  const createCalendarBtn = document.getElementById('btn-create-calendar');
+  if (createCalendarBtn) {
+    createCalendarBtn.addEventListener('click', createCalendar);
   }
 
   // Live preview wiring (checkboxes + debounced change listeners)

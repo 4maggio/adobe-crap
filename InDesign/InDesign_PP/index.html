@@ -1276,7 +1276,90 @@
       </div>
     </div>
 
-    <!-- Tab 5: Tools -->
+    <!-- Tab 5: Calendar -->
+    <div id="tab-calendar" class="tab-content">
+      <div class="form-group">
+        <h3 class="section-title" id="title-calendar">Kalender erstellen</h3>
+        <p class="helper-text" id="help-calendar">Erstelle automatisch ein Kalender-Grid für Wandkalender mit den Tagen des Monats.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-year" id="label-calendar-year">Jahr</label>
+        <input type="number" id="calendar-year" min="2020" max="2100" step="1" value="2026">
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-month" id="label-calendar-month">Monat</label>
+        <select id="calendar-month">
+          <option value="1">Januar</option>
+          <option value="2">Februar</option>
+          <option value="3">März</option>
+          <option value="4">April</option>
+          <option value="5">Mai</option>
+          <option value="6">Juni</option>
+          <option value="7">Juli</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">Oktober</option>
+          <option value="11">November</option>
+          <option value="12">Dezember</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-layout" id="label-calendar-layout">Layout</label>
+        <select id="calendar-layout">
+          <option value="grid" selected>Klassisches Grid (7×N)</option>
+          <option value="single-row">Eine Zeile (horizontal)</option>
+          <option value="single-column">Eine Spalte (vertikal)</option>
+          <option value="two-rows">Zwei Zeilen</option>
+          <option value="three-rows">Drei Zeilen</option>
+        </select>
+        <div class="helper-text" id="help-calendar-layout">Anordnung der Kalender-Tage</div>
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-start-day" id="label-calendar-start-day">Wochenstart</label>
+        <select id="calendar-start-day">
+          <option value="0">Sonntag</option>
+          <option value="1" selected>Montag</option>
+        </select>
+        <div class="helper-text" id="help-calendar-start-day">Erster Tag der Woche im Kalender (nur bei Grid)</div>
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-cell-width" id="label-calendar-cell-width">Zellbreite</label>
+        <div class="form-row">
+          <input type="number" id="calendar-cell-width" class="input-medium" step="1" min="10" value="50">
+          <span class="unit-label">mm</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-cell-height" id="label-calendar-cell-height">Zellhöhe</label>
+        <div class="form-row">
+          <input type="number" id="calendar-cell-height" class="input-medium" step="1" min="10" value="40">
+          <span class="unit-label">mm</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="calendar-show-week-numbers" checked>
+            <label for="calendar-show-week-numbers" id="label-calendar-show-week-numbers">Kalenderwochen anzeigen</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <button id="btn-create-calendar" class="button-primary">
+          <span id="btn-create-calendar-text">Kalender erstellen</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab 6: Tools -->
     <div id="tab-tools" class="tab-content">
       <div class="form-group">
         <p class="helper-text" id="help-tools">Zusätzliche Werkzeuge für die Arbeit mit Rahmen und Inhalten.</p>
