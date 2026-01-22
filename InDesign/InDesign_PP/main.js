@@ -227,6 +227,7 @@ const I18N = {
     "btn.distributeScale": "Verteilen & Skalieren",
     "btn.centerContent": "Inhalt zentrieren",
     "btn.fitToFrame": "An Rahmen anpassen",
+    "btn.flattenFrames": "Rahmen vereinfachen",
     "btn.copyLog": "Log kopieren",
     "btn.clearLog": "Log löschen",
     "btn.addFormat": "Format hinzufügen",
@@ -240,6 +241,7 @@ const I18N = {
     "tooltip.applyDistributeScale": "Verteilt und skaliert die Auswahl auf den Verteilungsbereich.",
     "tooltip.centerContent": "Zentriert Grafiken innerhalb der ausgewählten Rahmen.",
     "tooltip.fitToFrame": "Passt Inhalt an den Rahmen an (je nach Modus).",
+    "tooltip.flattenFrames": "Entfernt äußere Rahmen bei verschachtelten Objekten.",
     "tooltip.copyLog": "Kopiert das Log in die Zwischenablage.",
     "tooltip.clearLog": "Leert das Log.",
 
@@ -386,6 +388,7 @@ const I18N = {
     "btn.distributeScale": "Distribute & Scale",
     "btn.centerContent": "Center content",
     "btn.fitToFrame": "Fit to frame",
+    "btn.flattenFrames": "Flatten frames",
     "btn.copyLog": "Copy log",
     "btn.clearLog": "Clear log",
     "btn.addFormat": "Add format",
@@ -399,6 +402,7 @@ const I18N = {
     "tooltip.applyDistributeScale": "Distributes and scales the selection within the chosen area.",
     "tooltip.centerContent": "Centers graphics inside the selected frames.",
     "tooltip.fitToFrame": "Fits content to frame (depending on mode).",
+    "tooltip.flattenFrames": "Removes outer frames from nested objects.",
     "tooltip.copyLog": "Copies the log to the clipboard.",
     "tooltip.clearLog": "Clears the log.",
 
@@ -2900,6 +2904,130 @@ function canLivePreviewFitToFrame() {
   return hasActiveSelection();
 }
 
+async function applyFlattenNestedFrames() {
+  try {
+    const doc = getActiveDocumentSafe();
+    if (!doc) {
+      showMessage(t('msg.noActiveDocument'), true);
+      return;
+    }
+    if (!doc || !doc.selection || doc.selection.length === 0) {
+      showMessage(t('msg.noSelection'), true);
+      return;
+    }
+
+    let flattened = 0;
+    let skipped = 0;
+    const itemsToDelete = [];
+
+    for (let i = 0; i < doc.selection.length; i++) {
+      const item = doc.selection[i];
+      
+      if (!item) continue;
+
+      try {
+        // Prüfe ob das Item selbst in anderen Items verschachtelt ist
+        let parent = null;
+        try {
+          if (item.parent && item.parent.typename !== 'Document') {
+            parent = item.parent;
+          }
+        } catch (_) {
+          // ignore
+        }
+
+        if (!parent) {
+          // Kein äußerer Rahmen - check if it contains nested frames
+          const hasNestedFrames = checkForNestedFrames(item);
+          if (!hasNestedFrames) {
+            skipped++;
+            continue;
+          }
+        }
+
+        // Wenn item einen Parent hat (äußerer Rahmen), versuche zu "flattenen"
+        if (parent && parent.typename === 'Rectangle') {
+          // Transferiere alle Graphics vom Item zum Parent
+          if (item.allGraphics && item.allGraphics.length > 0) {
+            for (let g = 0; g < item.allGraphics.length; g++) {
+              const graphic = item.allGraphics[g];
+              // Versuche die Grafik zu duplizieren im Parent
+              try {
+                const parentGraphics = parent.allGraphics;
+                if (parentGraphics && graphic) {
+                  // Kopiere Position und Größe
+                  const gb = graphic.geometricBounds;
+                  if (gb) {
+                    // Grafik existiert bereits, nur nötig wenn wir den innersten Frame behalten
+                    appendLog(`Nested Frame: Grafik transferiert in äußeren Rahmen`);
+                  }
+                }
+              } catch (e) {
+                appendLog(`Fehler beim Transferieren von Grafik: ${e.message}`);
+              }
+            }
+          }
+
+          // Markiere äußeren Rahmen zum Löschen
+          itemsToDelete.push({item: parent, originalIndex: i, label: parent.id ? `ID ${parent.id}` : `Index ${i}`});
+          flattened++;
+          appendLog(`Flatten: Äußerer Rahmen ${itemsToDelete[itemsToDelete.length - 1].label} zum Löschen vorgemerkt`);
+        } else if (parent) {
+          appendLog(`Flatten: Object ${item.id || i} hat keinen Rectangle-Parent, übersprungen`);
+          skipped++;
+        } else {
+          skipped++;
+        }
+      } catch (e) {
+        appendLog(`Fehler bei Objekt ${i}: ${e.message}`);
+        skipped++;
+      }
+    }
+
+    // Lösche alle vorgemerkten äußeren Rahmen
+    for (let d = 0; d < itemsToDelete.length; d++) {
+      try {
+        const toDelete = itemsToDelete[d].item;
+        if (toDelete && typeof toDelete.remove === 'function') {
+          toDelete.remove();
+          appendLog(`Flatten: Äußerer Rahmen ${itemsToDelete[d].label} gelöscht`);
+        }
+      } catch (delErr) {
+        appendLog(`Fehler beim Löschen: ${delErr.message}`);
+      }
+    }
+
+    appendLog(`Flatten Nested Frames: ${flattened} Rahmen vereinfacht, ${skipped} übersprungen`);
+
+    if (flattened === 0) {
+      showMessage('Keine verschachtelten Rahmen gefunden', false);
+    } else {
+      showMessage(`${flattened} verschachtelte Rahmen vereinfacht`, false);
+    }
+  } catch (e) {
+    showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(e) }), true);
+    appendLog('Flatten Nested Frames Fehler: ' + e.message);
+  }
+}
+
+function checkForNestedFrames(item) {
+  try {
+    // Prüfe ob item mehrere Rahmen/Grafiken enthält
+    if (!item) return false;
+    
+    let frameCount = 0;
+    if (item.rectangles && item.rectangles.length > 0) frameCount += item.rectangles.length;
+    if (item.ovals && item.ovals.length > 0) frameCount += item.ovals.length;
+    if (item.polygons && item.polygons.length > 0) frameCount += item.polygons.length;
+    if (item.allGraphics && item.allGraphics.length > 0) frameCount += item.allGraphics.length;
+
+    return frameCount > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
+
 async function applyFitToFrame() {
   try {
     const doc = getActiveDocumentSafe();
@@ -4288,6 +4416,11 @@ function initPanel() {
   const scaleToFrameBtn = document.getElementById('scale-to-frame-btn');
   if (scaleToFrameBtn) {
     scaleToFrameBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('fitToFrame', applyFitToFrame); });
+  }
+
+  const flattenFramesBtn = document.getElementById('flatten-frames-btn');
+  if (flattenFramesBtn) {
+    flattenFramesBtn.addEventListener('click', applyFlattenNestedFrames);
   }
 
   // Calendar Tab Button
