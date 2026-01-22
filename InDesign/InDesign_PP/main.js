@@ -139,6 +139,29 @@ let definedFormats = [];
 let editFormatIndex = null;
 
 // ============================
+
+// Hilfsfunktion: Rundet nur, wenn mehr als 3 Nachkommastellen vorhanden sind
+function roundToMax3Decimals(n) {
+  if (typeof n !== "number" || isNaN(n)) return n;
+  const str = n.toString();
+  const parts = str.split(".");
+  if (parts.length === 2 && parts[1].length > 3) {
+    return Number(n.toFixed(3));
+  }
+  return n;
+}
+
+// Hilfsfunktion: Normalisiert Input-String (Komma → Punkt) und parst zu Float
+function parseLocalizedFloat(inputValue) {
+  if (typeof inputValue === 'object' && inputValue.value !== undefined) {
+    inputValue = inputValue.value;
+  }
+  const str = String(inputValue || '').trim();
+  // Ersetze Komma durch Punkt für lokalisierte Eingabe (deutsche Notation)
+  const normalized = str.replace(',', '.');
+  return parseFloat(normalized);
+}
+
 // Settings + i18n
 // ============================
 
@@ -899,7 +922,12 @@ function getBoundsData(item) {
 
 function boundsToText(bounds) {
   if (!bounds) return "n/a";
-  const fmt = (n) => (typeof n === "number" ? n.toFixed(2) : "n/a");
+  const fmt = (n) => {
+    if (typeof n !== "number") return "n/a";
+    const rounded = roundToMax3Decimals(n);
+    // Zeige bis zu 3 Nachkommastellen, aber keine unnötigen Nullen
+    return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+  };
   return `x=${fmt(bounds.x)}, y=${fmt(bounds.y)}, w=${fmt(bounds.width)}, h=${fmt(bounds.height)}`;
 }
 
@@ -1124,13 +1152,15 @@ function renderFormatList() {
     if (editFormatIndex === index) itemDiv.classList.add('selected');
 
     itemDiv.addEventListener('click', () => {
+
       const w = document.getElementById('format-width');
       const h = document.getElementById('format-height');
       const minEl = document.getElementById('format-min');
       const maxEl = document.getElementById('format-max');
 
-      if (w) w.value = String(fmt.width);
-      if (h) h.value = String(fmt.height);
+      // Original-Input-String setzen, falls vorhanden, sonst wie bisher
+      if (w) w.value = typeof fmt.widthStr === 'string' ? fmt.widthStr : ((typeof fmt.width === 'string') ? fmt.width : (fmt.width ?? '').toString());
+      if (h) h.value = typeof fmt.heightStr === 'string' ? fmt.heightStr : ((typeof fmt.height === 'string') ? fmt.height : (fmt.height ?? '').toString());
       if (minEl) minEl.value = String(fmt.min ?? 0);
       if (maxEl) maxEl.value = String(fmt.max ?? 0);
 
@@ -1139,7 +1169,7 @@ function renderFormatList() {
 
     const specsSpan = document.createElement('span');
     specsSpan.className = 'format-specs';
-    specsSpan.textContent = `${fmt.width.toFixed(1)} × ${fmt.height.toFixed(1)} mm`;
+    specsSpan.textContent = `${roundToMax3Decimals(fmt.width)} × ${roundToMax3Decimals(fmt.height)} mm`;
 
     const constraintsSpan = document.createElement('span');
     constraintsSpan.className = 'format-constraints';
@@ -1172,8 +1202,14 @@ function renderFormatList() {
 }
 
 function addFormat() {
-  const width = parseFloat(document.getElementById('format-width').value);
-  const height = parseFloat(document.getElementById('format-height').value);
+  const widthInput = document.getElementById('format-width');
+  const heightInput = document.getElementById('format-height');
+  const widthStr = widthInput.value;
+  const heightStr = heightInput.value;
+  let width = parseLocalizedFloat(widthStr);
+  let height = parseLocalizedFloat(heightStr);
+  width = roundToMax3Decimals(width);
+  height = roundToMax3Decimals(height);
   const min = parseInt(document.getElementById('format-min').value) || 0;
   const max = parseInt(document.getElementById('format-max').value) || 0;
 
@@ -1193,11 +1229,11 @@ function addFormat() {
   }
 
   if (editFormatIndex !== null && definedFormats[editFormatIndex]) {
-    definedFormats[editFormatIndex] = { width, height, min, max };
+    definedFormats[editFormatIndex] = { width, height, min, max, widthStr, heightStr };
     appendLog(`Format aktualisiert: ${width}x${height}mm, Min=${min}, Max=${max}`);
     setFormatEditState(null);
   } else {
-    definedFormats.push({ width, height, min, max });
+    definedFormats.push({ width, height, min, max, widthStr, heightStr });
     appendLog(`Format hinzugefügt: ${width}x${height}mm, Min=${min}, Max=${max}`);
   }
   syncFormatsToSettings();
@@ -1424,7 +1460,7 @@ async function renderTemplates() {
 
     const sizeSpan = document.createElement('span');
     sizeSpan.className = 'template-size';
-    sizeSpan.textContent = `${t.width.toFixed(1)}mm × ${t.height.toFixed(1)}mm`;
+    sizeSpan.textContent = `${roundToMax3Decimals(t.width)}mm × ${roundToMax3Decimals(t.height)}mm`;
 
     itemDiv.appendChild(nameSpan);
     itemDiv.appendChild(sizeSpan);
@@ -1467,8 +1503,10 @@ async function applyResize() {
       return;
     }
 
-    let width = parseFloat(document.getElementById('resize-width').value);
-    let height = parseFloat(document.getElementById('resize-height').value);
+    let width = parseLocalizedFloat(document.getElementById('resize-width').value);
+    let height = parseLocalizedFloat(document.getElementById('resize-height').value);
+    width = roundToMax3Decimals(width);
+    height = roundToMax3Decimals(height);
     const lockRatio = document.getElementById('lock-proportion').classList.contains('active');
 
     // Berechne Seitenverhältnis aus erstem Objekt falls nötig
@@ -1529,7 +1567,7 @@ async function applyResize() {
 
       const after = getBoundsData(item);
       const label = item && typeof item.id !== "undefined" ? `ID ${item.id}` : `Index ${i}`;
-      appendLog(`Resize -> ${label}: Start ${boundsToText(before)} | Ziel w=${width.toFixed(2)}, h=${height.toFixed(2)} | Result ${boundsToText(after)}`);
+      appendLog(`Resize -> ${label}: Start ${boundsToText(before)} | Ziel w=${roundToMax3Decimals(width)}, h=${roundToMax3Decimals(height)} | Result ${boundsToText(after)}`);
     }
 
     showMessage(t('msg.resized', { count: selection.length }));
@@ -1567,7 +1605,7 @@ async function applyDistribute() {
     }
 
     const gapInput = document.getElementById('distribute-gap');
-    const gap = gapInput ? parseFloat(gapInput.value) || 5 : 5;
+    let gap = gapInput ? roundToMax3Decimals(parseLocalizedFloat(gapInput.value) || 5) : 5;
 
     const method = getCheckedRadioValue('distribution-method', 'auto');
     const areaMode = getCheckedRadioValue('distribution-area', 'page');
@@ -1693,7 +1731,7 @@ function distributeGrid(items, pageBounds, cols, rows, horizontal, vertical, gap
       ];
 
       const after = getBoundsData(obj);
-      appendLog(`Verteilen -> ${label}: Start ${boundsToText(before)} | Ziel x=${newLeft.toFixed(2)}, y=${newTop.toFixed(2)} | Result ${boundsToText(after)}`);
+      appendLog(`Verteilen -> ${label}: Start ${boundsToText(before)} | Ziel x=${roundToMax3Decimals(newLeft)}, y=${roundToMax3Decimals(newTop)} | Result ${boundsToText(after)}`);
 
       index++;
     }
@@ -1722,11 +1760,8 @@ async function applyDistributeScale() {
 
     const overlapEl = document.getElementById('overlap-elements');
     const overlapEnabled = overlapEl ? !!overlapEl.checked : !!pluginSettings.overlapElements;
-    const spacing = overlapEnabled ? 0 : parseFloat(document.getElementById('spacing').value);
-    const minWidth = parseFloat(document.getElementById('scale-min-width').value);
-    const maxWidth = parseFloat(document.getElementById('scale-max-width').value);
-    const minHeight = parseFloat(document.getElementById('scale-min-height').value);
-    const maxHeight = parseFloat(document.getElementById('scale-max-height').value);
+    let spacing = overlapEnabled ? 0 : parseLocalizedFloat(document.getElementById('spacing').value);
+    spacing = roundToMax3Decimals(spacing);
 
     if (isNaN(spacing) || spacing < 0) {
       showMessage(t('msg.invalidSpacing'), true);
@@ -1765,12 +1800,12 @@ async function applyDistributeScale() {
       // Check if we can create empty frames from formats
       const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
       const hasFormats = definedFormats && definedFormats.length > 0;
-      
+
       if (!allowEmptyFramesEl || !allowEmptyFramesEl.checked || !hasFormats) {
         showMessage(t('msg.noBounds'), true);
         return;
       }
-      
+
       appendLog(`📭 Keine Objekte ausgewählt - erstelle ${definedFormats.reduce((sum, f) => sum + (f.min || 0), 0)} leere Rahmen aus Preset`);
     }
 
@@ -1816,6 +1851,7 @@ async function applyDistributeScale() {
       appendLog(`❌ ${msg}`);
       return;
     }
+    if (state) state.warnedNeedsFrame = false;
 
     let cols, rows, formatAssignments;
     let formatsForLayout = null;
@@ -1952,15 +1988,15 @@ async function applyDistributeScale() {
 
     // Wende Min/Max Constraints an (nur im Single-Modus)
     if (formatMode === 'single') {
-      const minWidth = parseFloat(document.getElementById('scale-min-width').value);
-      const maxWidth = parseFloat(document.getElementById('scale-max-width').value);
-      const minHeight = parseFloat(document.getElementById('scale-min-height').value);
-      const maxHeight = parseFloat(document.getElementById('scale-max-height').value);
+      let minWidthSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-min-width').value));
+      let maxWidthSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-max-width').value));
+      let minHeightSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-min-height').value));
+      let maxHeightSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-max-height').value));
 
-      if (!isNaN(minWidth) && defaultItemWidth < minWidth) defaultItemWidth = minWidth;
-      if (!isNaN(maxWidth) && defaultItemWidth > maxWidth) defaultItemWidth = maxWidth;
-      if (!isNaN(minHeight) && defaultItemHeight < minHeight) defaultItemHeight = minHeight;
-      if (!isNaN(maxHeight) && defaultItemHeight > maxHeight) defaultItemHeight = maxHeight;
+      if (!isNaN(minWidthSingle) && defaultItemWidth < minWidthSingle) defaultItemWidth = minWidthSingle;
+      if (!isNaN(maxWidthSingle) && defaultItemWidth > maxWidthSingle) defaultItemWidth = maxWidthSingle;
+      if (!isNaN(minHeightSingle) && defaultItemHeight < minHeightSingle) defaultItemHeight = minHeightSingle;
+      if (!isNaN(maxHeightSingle) && defaultItemHeight > maxHeightSingle) defaultItemHeight = maxHeightSingle;
     }
 
     // Verteile und skaliere Objekte (Frame + optional Inhalt)
@@ -2512,8 +2548,8 @@ function canLivePreviewResize() {
   const lockBtn = document.getElementById('lock-proportion');
   const lockRatio = !!(lockBtn && lockBtn.classList.contains('active'));
 
-  const width = widthEl ? parseFloat(widthEl.value) : NaN;
-  const height = heightEl ? parseFloat(heightEl.value) : NaN;
+  const width = widthEl ? parseLocalizedFloat(widthEl.value) : NaN;
+  const height = heightEl ? parseLocalizedFloat(heightEl.value) : NaN;
 
   if (lockRatio) {
     const hasOneSide = (Number.isFinite(width) && width >= MIN_DIMENSION) || (Number.isFinite(height) && height >= MIN_DIMENSION);
@@ -2533,7 +2569,7 @@ function canLivePreviewDistribute() {
   if (gapEl) {
     const raw = String(gapEl.value || '').trim();
     if (raw) {
-      const gap = parseFloat(raw);
+      const gap = parseLocalizedFloat(raw);
       if (!Number.isFinite(gap) || gap < 0) return false;
     }
   }
@@ -2567,7 +2603,7 @@ function canLivePreviewDistributeScale(state) {
   if (!overlapEnabled) {
     const spacingEl = document.getElementById('spacing');
     const spacingRaw = spacingEl ? String(spacingEl.value || '').trim() : '';
-    spacing = parseFloat(spacingRaw);
+    spacing = parseLocalizedFloat(spacingRaw);
     if (!Number.isFinite(spacing) || spacing < 0) return false;
   }
 
@@ -2615,7 +2651,7 @@ function canLivePreviewCenterContent() {
 async function createCalendar() {
   try {
     const doc = getActiveDocumentSafe();
-    
+
     if (!doc) {
       showMessage('Kein aktives Dokument', true);
       return;
@@ -2623,7 +2659,7 @@ async function createCalendar() {
 
     // Check if document has pages
     appendLog(`Dokument hat ${doc.pages ? doc.pages.length : 0} Seite(n)`);
-    
+
     if (!doc.pages || doc.pages.length === 0) {
       showMessage('Dokument hat keine Seiten', true);
       return;
@@ -2634,20 +2670,20 @@ async function createCalendar() {
     const month = parseInt(document.getElementById('calendar-month').value, 10);
     const layout = document.getElementById('calendar-layout').value;
     const startDay = parseInt(document.getElementById('calendar-start-day').value, 10);
-    let cellWidth = parseFloat(document.getElementById('calendar-cell-width').value) || 50;
-    let cellHeight = parseFloat(document.getElementById('calendar-cell-height').value) || 40;
+    let cellWidth = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-cell-width').value)) || 50;
+    let cellHeight = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-cell-height').value)) || 40;
     const showWeekNumbers = document.getElementById('calendar-show-week-numbers').checked;
 
     appendLog(`📅 Erstelle Kalender: ${month}/${year}, Layout: ${layout}`);
 
     // Get first page - try multiple methods
     let page = null;
-    
+
     // Method 1: Direct array access
     if (doc.pages.length > 0) {
       page = doc.pages.item(0);
     }
-    
+
     // Method 2: Iterate
     if (!page && doc.pages.length > 0) {
       for (let i = 0; i < doc.pages.length; i++) {
@@ -2655,29 +2691,29 @@ async function createCalendar() {
         if (page) break;
       }
     }
-    
+
     if (!page) {
       showMessage('Konnte keine Seite im Dokument finden', true);
       appendLog(`❌ Page ist null/undefined, doc.pages.length=${doc.pages.length}`);
       return;
     }
-    
+
     appendLog(`Seite gefunden: ${page.name || 'unbenannt'}`);
-    
+
     const bounds = page.bounds;
     if (!bounds || bounds.length < 4) {
       showMessage('Konnte Seitengrenzen nicht lesen', true);
       appendLog(`❌ Bounds ungültig: ${JSON.stringify(bounds)}`);
       return;
     }
-    
+
     // Calculate page dimensions [top, left, bottom, right]
     const pageWidth = Math.abs(bounds[3] - bounds[1]);
     const pageHeight = Math.abs(bounds[2] - bounds[0]);
     const pageTop = bounds[0];
     const pageLeft = bounds[1];
-    
-    appendLog(`Seite: ${pageWidth.toFixed(1)}×${pageHeight.toFixed(1)}mm`);
+
+    appendLog(`Seite: ${pageWidth.toFixed(3)}×${pageHeight.toFixed(3)}mm`);
 
     // Weekday names
     const weekdaysSunday = ['S', 'M', 'D', 'M', 'D', 'F', 'S']; // Sun-Sat
@@ -2687,39 +2723,39 @@ async function createCalendar() {
     const date = new Date(year, month - 1, 1);
     const daysInMonth = new Date(year, month, 0).getDate();
     const firstDay = date.getDay(); // 0=Sunday, 6=Saturday
-    
+
     // Determine layout configuration
     let cols, rows, adjustedFirstDay = 0;
-    
+
     switch (layout) {
       case 'single-row':
         cols = daysInMonth;
         rows = 1;
         cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5)); // Auto-fit to page width
-        appendLog(`Single-Row: ${cols} Zellen, Breite: ${cellWidth.toFixed(1)}mm`);
+        appendLog(`Single-Row: ${cols} Zellen, Breite: ${cellWidth.toFixed(3)}mm`);
         break;
-        
+
       case 'single-column':
         cols = 1;
         rows = daysInMonth;
         cellHeight = Math.min(cellHeight, pageHeight / (rows + 0.5)); // Auto-fit to page height
-        appendLog(`Single-Column: ${rows} Zellen, Höhe: ${cellHeight.toFixed(1)}mm`);
+        appendLog(`Single-Column: ${rows} Zellen, Höhe: ${cellHeight.toFixed(3)}mm`);
         break;
-        
+
       case 'two-rows':
         cols = Math.ceil(daysInMonth / 2);
         rows = 2;
         cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5));
-        appendLog(`Zwei Zeilen: ${cols}×2, Breite: ${cellWidth.toFixed(1)}mm`);
+        appendLog(`Zwei Zeilen: ${cols}×2, Breite: ${cellWidth.toFixed(3)}mm`);
         break;
-        
+
       case 'three-rows':
         cols = Math.ceil(daysInMonth / 3);
         rows = 3;
         cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5));
-        appendLog(`Drei Zeilen: ${cols}×3, Breite: ${cellWidth.toFixed(1)}mm`);
+        appendLog(`Drei Zeilen: ${cols}×3, Breite: ${cellWidth.toFixed(3)}mm`);
         break;
-        
+
       case 'grid':
       default:
         // Adjust first day based on week start preference
@@ -2732,7 +2768,7 @@ async function createCalendar() {
         appendLog(`Grid-Layout: 7×${rows}, Offset: ${adjustedFirstDay}`);
         break;
     }
-    
+
     // Select weekdays array based on start day (only for grid layout)
     const weekdays = startDay === 1 ? weekdaysMonday : weekdaysSunday;
     const headerHeight = layout === 'grid' ? cellHeight * 0.6 : 0; // Header only for grid layout
@@ -2752,20 +2788,20 @@ async function createCalendar() {
         const y = startY;
 
         const headerFrame = page.textFrames.add();
-      headerFrame.geometricBounds = [y, x, y + headerHeight, x + cellWidth];
-      headerFrame.contents = weekdays[col];
-      
-      // Add border
-      headerFrame.strokeWeight = 0.5;
-      try {
-        const blackSwatch = doc.swatches.itemByName('Black');
-        if (blackSwatch && blackSwatch.isValid) {
-          headerFrame.strokeColor = blackSwatch;
+        headerFrame.geometricBounds = [y, x, y + headerHeight, x + cellWidth];
+        headerFrame.contents = weekdays[col];
+
+        // Add border
+        headerFrame.strokeWeight = 0.5;
+        try {
+          const blackSwatch = doc.swatches.itemByName('Black');
+          if (blackSwatch && blackSwatch.isValid) {
+            headerFrame.strokeColor = blackSwatch;
+          }
+        } catch (e) {
+          // Black swatch not found - skip stroke color
         }
-      } catch (e) {
-        // Black swatch not found - skip stroke color
       }
-    }
     }
 
     // Create frames for each day (offset by header height)
@@ -2908,7 +2944,7 @@ async function applyFitToFrame() {
               // True stretch: width AND height independently (distorts)
               scaleX = (frameWidth / gw) * 100;
               scaleY = (frameHeight / gh) * 100;
-              appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(1)}%, scaleY=${scaleY.toFixed(1)}%`);
+              appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(3)}%, scaleY=${scaleY.toFixed(3)}%`);
             } else if (mode === 'fill') {
               // Fill: choose bigger factor so content covers the frame
               const scaleToFitWidth = (frameWidth / gw) * 100;
@@ -2919,13 +2955,13 @@ async function applyFitToFrame() {
                 scaleX = s;
                 scaleY = s;
                 const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                appendLog(`  -> Fill (horz) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% > ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+                appendLog(`  -> Fill (horz) ${label}: Frame ${roundToMax3Decimals(frameWidth)}x${roundToMax3Decimals(frameHeight)}mm, Content ${roundToMax3Decimals(gw)}x${roundToMax3Decimals(gh)}mm, ScaleW=${roundToMax3Decimals(scaleToFitWidth)}% > ScaleH=${roundToMax3Decimals(scaleToFitHeight)}%, Gewählt=${roundToMax3Decimals(s)}%`);
               } else {
                 const s = scaleToFitHeight;
                 scaleX = s;
                 scaleY = s;
                 const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                appendLog(`  -> Fill (vert) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% < ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+                appendLog(`  -> Fill (vert) ${label}: Frame ${roundToMax3Decimals(frameWidth)}x${roundToMax3Decimals(frameHeight)}mm, Content ${roundToMax3Decimals(gw)}x${roundToMax3Decimals(gh)}mm, ScaleW=${roundToMax3Decimals(scaleToFitWidth)}% < ScaleH=${roundToMax3Decimals(scaleToFitHeight)}%, Gewählt=${roundToMax3Decimals(s)}%`);
               }
             } else if (mode === 'fit-vert') {
               const s = (frameHeight / gh) * 100;
@@ -3671,7 +3707,7 @@ function initPanel() {
       // Ignore - no document open or other error
     }
   };
-  
+
   // Poll every 500ms for selection changes
   setInterval(checkSelection, 500);
   // Initial check
@@ -4050,10 +4086,10 @@ function initPanel() {
   };
 
   const applySettings = () => {
-    const font = parseFloat(inputFont.value) || 11;
-    const gap = parseFloat(inputGap.value) || 8;
-    const pad = parseFloat(inputPad.value) || 12;
-    const divider = parseFloat(inputDivider.value) || 16;
+    const font = roundToMax3Decimals(parseLocalizedFloat(inputFont.value)) || 11;
+    const gap = roundToMax3Decimals(parseLocalizedFloat(inputGap.value)) || 8;
+    const pad = roundToMax3Decimals(parseLocalizedFloat(inputPad.value)) || 12;
+    const divider = roundToMax3Decimals(parseLocalizedFloat(inputDivider.value)) || 16;
 
     pluginSettings.ui = {
       font,
@@ -4186,8 +4222,8 @@ function initPanel() {
 
   document.getElementById('save-template-btn').addEventListener('click', async () => {
     const name = document.getElementById('template-name').value.trim();
-    const width = parseFloat(document.getElementById('resize-width').value);
-    const height = parseFloat(document.getElementById('resize-height').value);
+    const width = parseLocalizedFloat(document.getElementById('resize-width').value);
+    const height = parseLocalizedFloat(document.getElementById('resize-height').value);
 
     if (!name) {
       showMessage(t('msg.templateNameRequired'), true);
