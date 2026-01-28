@@ -1,7 +1,7 @@
 const { entrypoints } = require("uxp");
 // NOTE: In UXP some module exports can behave like dynamic getters.
 // Avoid destructuring `app` at require-time; resolve it on demand.
-const { FitOptions } = require("indesign");
+const { FitOptions, ColorModel, ColorSpace } = require("indesign");
 const fs = require("uxp").storage.localFileSystem;
 
 // Bump this when debugging UI caching/reload issues
@@ -93,6 +93,7 @@ function safeInitPanel(source) {
 // Storage für Templates (UXP File System API)
 const STORAGE_FILENAME = "templates.json";
 const SETTINGS_FILENAME = "settings.json";
+const CALENDAR_PRESETS_FILENAME = "calendar-presets.json";
 const LOG_LIMIT = 2000;
 const MIN_DIMENSION = 0.1; // Minimale Breite/Höhe in mm
 const MAX_DIMENSION = 10000; // Maximale Breite/Höhe in mm
@@ -137,6 +138,9 @@ async function getPluginDataFolder() {
 // Multi-Format System
 let definedFormats = [];
 let editFormatIndex = null;
+
+// Calendar Presets System
+let calendarPresets = [];
 
 // ============================
 
@@ -357,7 +361,15 @@ const I18N = {
     "label.calendarShowWeekNumbers": "Kalenderwochen anzeigen",
     "label.calendarShowWeekdays": "Wochentage anzeigen",
     "label.calendarWeekdayFormat": "Wochentag-Format",
-    "btn.createCalendar": "Kalender erstellen"
+    "label.calendarFontFamily": "Schriftart",
+    "label.calendarFontSize": "Schriftgröße",
+    "label.calendarWeekdayColors": "Wochentag-Farben",
+    "label.calendarPresetsTitle": "Kalender-Vorlagen",
+    "btn.createCalendar": "Kalender erstellen",
+    "btn.saveCalendarPreset": "Speichern",
+    "msg.calendarPresetNameRequired": "Bitte einen Namen für die Vorlage eingeben",
+    "msg.calendarPresetSaved": "Vorlage gespeichert",
+    "msg.calendarPresetDeleted": "Vorlage gelöscht"
   },
   en: {
     "tabs.resize": "Size",
@@ -423,7 +435,15 @@ const I18N = {
     "label.calendarShowWeekNumbers": "Show week numbers",
     "label.calendarShowWeekdays": "Show weekdays",
     "label.calendarWeekdayFormat": "Weekday format",
+    "label.calendarFontFamily": "Font family",
+    "label.calendarFontSize": "Font size",
+    "label.calendarWeekdayColors": "Weekday colors",
+    "label.calendarPresetsTitle": "Calendar presets",
     "btn.createCalendar": "Create calendar",
+    "btn.saveCalendarPreset": "Save",
+    "msg.calendarPresetNameRequired": "Please enter a name for the preset",
+    "msg.calendarPresetSaved": "Preset saved",
+    "msg.calendarPresetDeleted": "Preset deleted",
 
     "tooltip.formatWidth": "Format width (mm) for Multi mode.",
     "tooltip.formatHeight": "Format height (mm) for Multi mode.",
@@ -646,6 +666,10 @@ function applyLanguageToUI() {
   setTextById("label-calendar-show-week-numbers", "label.calendarShowWeekNumbers");
   setTextById("label-calendar-show-weekdays", "label.calendarShowWeekdays");
   setTextById("label-calendar-weekday-format", "label.calendarWeekdayFormat");
+  setTextById("label-calendar-font-family", "label.calendarFontFamily");
+  setTextById("label-calendar-font-size", "label.calendarFontSize");
+  setTextById("label-calendar-weekday-colors", "label.calendarWeekdayColors");
+  setTextById("label-calendar-presets-title", "label.calendarPresetsTitle");
   setTextById("btn-create-calendar-text", "btn.createCalendar");
 
   // Live preview labels
@@ -696,6 +720,7 @@ function applyLanguageToUI() {
   setBtn("center-content-btn", "btn.centerContent");
   setBtn("scale-to-frame-btn", "btn.fitToFrame");
   setBtn("flatten-frames-btn", "btn.flattenFrames");
+  setBtn("btn-save-calendar-preset", "btn.saveCalendarPreset");
   setBtn("add-format-btn", "btn.addFormat");
   setBtn("cancel-edit-format-btn", "btn.cancel");
   setBtn("clear-formats-btn", "btn.clearFormats");
@@ -1466,6 +1491,175 @@ async function saveTemplates(templates) {
     console.error("Fehler beim Speichern der Templates:", e);
     appendLog('Fehler beim Speichern: ' + e.message);
     showMessage(t('msg.templatesSaveFailed', { message: formatErrorMessage(e) }), true);
+  }
+}
+
+// Calendar Presets
+async function loadCalendarPresets() {
+  try {
+    const folder = await getPluginDataFolder();
+    const entries = await folder.getEntries();
+
+    let presetsFile = null;
+    for (const entry of entries) {
+      if (entry.name === CALENDAR_PRESETS_FILENAME && entry.isFile) {
+        presetsFile = entry;
+        break;
+      }
+    }
+
+    if (!presetsFile) {
+      return [];
+    }
+
+    const contents = await presetsFile.read();
+    const parsed = JSON.parse(contents);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('Fehler beim Laden der Kalender-Vorlagen:', e);
+    return [];
+  }
+}
+
+async function saveCalendarPresets(presets) {
+  try {
+    if (!Array.isArray(presets)) {
+      throw new Error('Presets muss ein Array sein');
+    }
+
+    const folder = await getPluginDataFolder();
+    const presetsFile = await folder.createFile(CALENDAR_PRESETS_FILENAME, { overwrite: true });
+    await presetsFile.write(JSON.stringify(presets, null, 2));
+
+    appendLog(`${presets.length} Kalender-Vorlage(n) gespeichert`);
+  } catch (e) {
+    console.error("Fehler beim Speichern der Kalender-Vorlagen:", e);
+    appendLog('Fehler beim Speichern: ' + e.message);
+    showMessage(t('msg.templatesSaveFailed', { message: formatErrorMessage(e) }), true);
+  }
+}
+
+async function renderCalendarPresets() {
+  calendarPresets = await loadCalendarPresets();
+  const listEl = document.getElementById('calendar-preset-list');
+
+  if (!listEl) return;
+
+  listEl.innerHTML = '';
+
+  if (calendarPresets.length === 0) {
+    listEl.innerHTML = `<div class="helper-text" style="padding: 8px; font-size: 12px;">Keine Vorlagen</div>`;
+    return;
+  }
+
+  calendarPresets.forEach((preset, index) => {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'template-item';
+    itemDiv.setAttribute('data-index', index.toString());
+    itemDiv.style.padding = '6px';
+    itemDiv.style.marginBottom = '4px';
+    itemDiv.style.borderRadius = '3px';
+    itemDiv.style.backgroundColor = '#f0f0f0';
+    itemDiv.style.display = 'flex';
+    itemDiv.style.justifyContent = 'space-between';
+    itemDiv.style.alignItems = 'center';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.style.cursor = 'pointer';
+    nameSpan.style.flex = '1';
+    nameSpan.textContent = preset.name;
+    nameSpan.addEventListener('click', () => loadCalendarPreset(index));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.style.padding = '2px 6px';
+    deleteBtn.style.fontSize = '11px';
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.textContent = '×';
+    deleteBtn.addEventListener('click', () => deleteCalendarPreset(index));
+
+    itemDiv.appendChild(nameSpan);
+    itemDiv.appendChild(deleteBtn);
+    listEl.appendChild(itemDiv);
+  });
+}
+
+function loadCalendarPreset(index) {
+  if (calendarPresets[index]) {
+    const preset = calendarPresets[index];
+    document.getElementById('calendar-year').value = preset.year;
+    document.getElementById('calendar-month').value = preset.month;
+    document.getElementById('calendar-layout').value = preset.layout;
+    document.getElementById('calendar-start-day').value = preset.startDay;
+    document.getElementById('calendar-cell-width').value = preset.cellWidth;
+    document.getElementById('calendar-cell-height').value = preset.cellHeight;
+    document.getElementById('calendar-show-week-numbers').checked = preset.showWeekNumbers;
+    document.getElementById('calendar-show-weekdays').checked = preset.showWeekdays;
+    document.getElementById('calendar-weekday-format').value = preset.weekdayFormat;
+    document.getElementById('calendar-font-family').value = preset.fontFamily;
+    document.getElementById('calendar-font-size').value = preset.fontSize;
+    
+    // Load colors
+    if (preset.weekdayColors) {
+      document.getElementById('calendar-color-sunday').value = preset.weekdayColors[0];
+      document.getElementById('calendar-color-monday').value = preset.weekdayColors[1];
+      document.getElementById('calendar-color-tuesday').value = preset.weekdayColors[2];
+      document.getElementById('calendar-color-wednesday').value = preset.weekdayColors[3];
+      document.getElementById('calendar-color-thursday').value = preset.weekdayColors[4];
+      document.getElementById('calendar-color-friday').value = preset.weekdayColors[5];
+      document.getElementById('calendar-color-saturday').value = preset.weekdayColors[6];
+    }
+    
+    appendLog(`Vorlage geladen: ${preset.name}`);
+  }
+}
+
+async function saveCalendarPresetHandler() {
+  const nameInput = document.getElementById('calendar-preset-name');
+  const name = nameInput.value.trim();
+
+  if (!name) {
+    showMessage(t('msg.calendarPresetNameRequired'), true);
+    return;
+  }
+
+  const preset = {
+    name: name,
+    year: parseInt(document.getElementById('calendar-year').value, 10),
+    month: parseInt(document.getElementById('calendar-month').value, 10),
+    layout: document.getElementById('calendar-layout').value,
+    startDay: parseInt(document.getElementById('calendar-start-day').value, 10),
+    cellWidth: parseLocalizedFloat(document.getElementById('calendar-cell-width').value),
+    cellHeight: parseLocalizedFloat(document.getElementById('calendar-cell-height').value),
+    showWeekNumbers: document.getElementById('calendar-show-week-numbers').checked,
+    showWeekdays: document.getElementById('calendar-show-weekdays').checked,
+    weekdayFormat: document.getElementById('calendar-weekday-format').value,
+    fontFamily: document.getElementById('calendar-font-family').value,
+    fontSize: parseLocalizedFloat(document.getElementById('calendar-font-size').value),
+    weekdayColors: [
+      document.getElementById('calendar-color-sunday').value,
+      document.getElementById('calendar-color-monday').value,
+      document.getElementById('calendar-color-tuesday').value,
+      document.getElementById('calendar-color-wednesday').value,
+      document.getElementById('calendar-color-thursday').value,
+      document.getElementById('calendar-color-friday').value,
+      document.getElementById('calendar-color-saturday').value
+    ]
+  };
+
+  calendarPresets.push(preset);
+  await saveCalendarPresets(calendarPresets);
+  nameInput.value = '';
+  await renderCalendarPresets();
+  showMessage(t('msg.calendarPresetSaved'));
+}
+
+async function deleteCalendarPreset(index) {
+  if (index >= 0 && index < calendarPresets.length) {
+    const name = calendarPresets[index].name;
+    calendarPresets.splice(index, 1);
+    await saveCalendarPresets(calendarPresets);
+    await renderCalendarPresets();
+    showMessage(t('msg.calendarPresetDeleted'));
   }
 }
 
@@ -2718,8 +2912,23 @@ async function createCalendar() {
     const showWeekdays = showWeekdaysEl ? showWeekdaysEl.checked : true;
     const weekdayFormatEl = document.getElementById('calendar-weekday-format');
     const weekdayFormat = weekdayFormatEl ? weekdayFormatEl.value : 'medium';
+    
+    // Get font and color settings
+    const fontFamily = document.getElementById('calendar-font-family').value || 'Arial';
+    const fontSize = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-font-size').value)) || 10;
+    
+    // Get weekday colors
+    const weekdayColors = [
+      document.getElementById('calendar-color-sunday').value || '#000000',
+      document.getElementById('calendar-color-monday').value || '#000000',
+      document.getElementById('calendar-color-tuesday').value || '#000000',
+      document.getElementById('calendar-color-wednesday').value || '#000000',
+      document.getElementById('calendar-color-thursday').value || '#000000',
+      document.getElementById('calendar-color-friday').value || '#000000',
+      document.getElementById('calendar-color-saturday').value || '#000000'
+    ];
 
-    appendLog(`📅 Erstelle Kalender: ${month}/${year}, Layout: ${layout}`);
+    appendLog(`📅 Erstelle Kalender: ${month}/${year}, Layout: ${layout}, Font: ${fontFamily} ${fontSize}pt`);
 
     // Get first page - try multiple methods
     let page = null;
@@ -2764,7 +2973,7 @@ async function createCalendar() {
     const weekdaysShort = ['S', 'M', 'D', 'M', 'D', 'F', 'S']; // Sun-Sat (single letter)
     const weekdaysMedium = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']; // Sun-Sat (2 letters)
     const weekdaysLong = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag']; // Full names
-    
+
     const getWeekdaysArray = (format, startDayValue) => {
       let baseArray;
       switch (format) {
@@ -2779,14 +2988,14 @@ async function createCalendar() {
           baseArray = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
           break;
       }
-      
+
       // If Monday start, rotate array
       if (startDayValue === 1) {
         return [...baseArray.slice(1), baseArray[0]]; // Move Sunday to end
       }
       return baseArray;
     };
-    
+
     const weekdays = getWeekdaysArray(weekdayFormat, startDay);
 
     // Calculate days in month
@@ -2862,7 +3071,7 @@ async function createCalendar() {
 
         const headerFrame = page.textFrames.add();
         headerFrame.geometricBounds = [y, x, y + headerHeight, x + cellWidth];
-        
+
         // For grid layout, use the standard weekdays
         if (layout === 'grid') {
           headerFrame.contents = weekdays[col];
@@ -2914,6 +3123,70 @@ async function createCalendar() {
 
         // Add day number (formatting in InDesign UXP is limited, keep it simple)
         frame.contents = String(day);
+
+        // Get the day of week for color application
+        const dayDate = new Date(year, month - 1, day);
+        let dayOfWeek = dayDate.getDay(); // 0=Sunday, 6=Saturday
+        if (startDay === 1) { // Monday start
+          dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        }
+
+        // Apply font and color
+        try {
+          if (frame.paragraphs && frame.paragraphs.length > 0) {
+            const para = frame.paragraphs[0];
+            
+            // Set font size
+            if (para.characterStyleRange && para.characterStyleRange.pointSize !== undefined) {
+              para.characterStyleRange.pointSize = fontSize;
+            }
+            
+            // Try to apply font
+            try {
+              if (para.characterStyleRange && para.characterStyleRange.appliedFont !== undefined) {
+                const fontObj = doc.fonts.itemByName(fontFamily);
+                if (fontObj && fontObj.isValid) {
+                  para.characterStyleRange.appliedFont = fontObj;
+                }
+              }
+            } catch (e) {
+              // Font not available, continue without it
+            }
+            
+            // Apply weekday color
+            try {
+              const hexColor = weekdayColors[dayOfWeek];
+              // Convert hex to RGB components
+              const r = parseInt(hexColor.substr(1, 2), 16);
+              const g = parseInt(hexColor.substr(3, 2), 16);
+              const b = parseInt(hexColor.substr(5, 2), 16);
+              
+              // Try to create or find color
+              let colorSwatch = null;
+              try {
+                colorSwatch = doc.swatches.itemByName(`Calendar-${dayOfWeek}`);
+              } catch (e) {
+                // Create new swatch
+                try {
+                  colorSwatch = doc.swatches.add();
+                  colorSwatch.name = `Calendar-${dayOfWeek}`;
+                  colorSwatch.colorType = ColorModel.RGB;
+                  colorSwatch.space = ColorSpace.RGB;
+                } catch (e2) {
+                  // Swatch creation failed
+                }
+              }
+              
+              if (colorSwatch && colorSwatch.isValid) {
+                para.characterStyleRange.fillColor = colorSwatch;
+              }
+            } catch (e) {
+              // Color application failed, continue
+            }
+          }
+        } catch (e) {
+          // Character style access failed
+        }
 
         // Add border
         frame.strokeWeight = 0.5;
@@ -4515,6 +4788,11 @@ function initPanel() {
     createCalendarBtn.addEventListener('click', createCalendar);
   }
 
+  const saveCalendarPresetBtn = document.getElementById('btn-save-calendar-preset');
+  if (saveCalendarPresetBtn) {
+    saveCalendarPresetBtn.addEventListener('click', saveCalendarPresetHandler);
+  }
+
   // Live preview wiring (checkboxes + debounced change listeners)
   initLivePreviewWiring();
 
@@ -4528,6 +4806,9 @@ function initPanel() {
     } else {
       definedFormats = [];
     }
+
+    // Load calendar presets
+    await renderCalendarPresets();
 
     if (toggleLog) toggleLog.checked = !!pluginSettings.logEnabled;
     if (togglePopups) togglePopups.checked = !!pluginSettings.popupsEnabled;
