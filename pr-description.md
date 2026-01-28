@@ -1,88 +1,78 @@
-## 📅 Neue Features
+## 📅 Neue Features in v1.0.4
 
-### 1. Kalender-Tab
-- Automatische Erstellung von Wandkalendern mit verschiedenen Layouts
-- **5 Layout-Presets**:
-  - Klassisches Grid (7×N) mit Wochentags-Header (M D M D F S S)
-  - Eine Zeile (horizontal, Auto-Anpassung an Seitenbreite)
-  - Eine Spalte (vertikal, Auto-Anpassung an Seitenhöhe)
-  - Zwei/Drei Zeilen (gleichmäßige Verteilung)
-- Wochenstart-Auswahl (Montag/Sonntag)
-- Automatische Zentrierung auf Seite
-- Konfigurierbare Zellgrößen
+### 1. Kalender-System Erweiterungen
+- **Wochentags-Anzeige**: Toggle für Wochentag-Kopfzeilen
+- **Wochentag-Formate**: Kurz (M D M), Mittel (Mo Di Mi), Lang (Montag...)
+- **Schriftart-Auswahl**: Arial, Helvetica, Times New Roman, Courier, Verdana, Georgia
+- **Schriftgröße**: 6–72pt mit Dezimal-Unterstützung
+- **Pro-Wochentag Farben**: 7 individuelle Farbwähler (So–Sa)
 
-### 2. Layout-Presets Tab
-- 9 vordefinierte Foto-Layouts:
-  - **Hero Center**: Großes Bild zentral, kleinere rundherum
-  - **Hero Stack**: 3 Bilder vertikal gestapelt
-  - **Masonry 2/3 Spalten**: Variable Höhen
-  - **Grid 2×2 / 3×3**: Gleichmäßige Raster
-  - **L-Layout**: Großes Bild links, Galerie rechts
-  - **Magazin-Stil**: Asymmetrisch, dynamisch
-  - **Collage**: Freie Anordnung
-- Live-Vorschau für alle Presets
-- Übertragung in Layout-Tab möglich
-- SVG-Vorschauen für visuelle Auswahl
+### 2. Kalender-Presets System
+- Speichern kompletter Kalender-Konfigurationen
+- Automatisches Laden/Löschen von Vorlagen
+- Persistierung in `calendar-presets.json`
+- Alle Einstellungen werden gespeichert (Layout, Größe, Schriften, Farben)
 
-### 3. Live-Vorschau System
-- Checkbox für temporäre Anwendung in allen Tabs
-- Debounced Updates (300-550ms je nach Komplexität)
-- Automatisches Zurücksetzen beim Tab-Wechsel
-- Snapshot/Restore-System für revertierbares Arbeiten
+### 3. Tools-Tab Verbesserungen
+- **Flatten Frames**: Entfernt äußere Rahmen von verschachtelten Objekten
+- Automatische Detektion verschachtelter Strukturen
 
-### 4. Masonry-Layout Verbesserungen
-- **Spalten-Presets**: Auto, 1-5 Spalten, Manuell
-- **Rahmenanzahl-Modi**: Auswahl = Rahmen oder manuelle Anzahl
-- **Seeded Shuffle**: Reproduzierbare Zufallsanordnung
-- Seite auffüllen-Option
-- Einheitliche Spaltenbreite-Toggle
+### 4. Dezimal- & Lokalisierungsverbesserungen
+- **3 Dezimalstellen** für alle Größeneingaben
+- **Deutsche Dezimalnotation**: Kommas statt Punkte (z.B. 88,789 mm)
+- Globale `parseLocalizedFloat()` Funktion
+- Konsistente `roundToMax3Decimals()` Anwendung
 
-### 5. Multi-Format Verbesserungen
-- **Leere Rahmen erlauben**: Erstellt zusätzliche Slots wenn min-Werte > Auswahl
-- **Auto-Skalierung**: Passt alle Formate an Seite an
-- **Seitenverhältnis beibehalten**: Für Single- und Multi-Modus
-- **Elemente überlappen**: Setzt Abstand auf 0
-- Inline-Warnung wenn Rahmen nicht aktiviert
+### 5. Mehrsprachige UI-Aktualisierungen
+- Alle neuen Labels in Deutsch und Englisch
+- Automatische Übersetzung beim Sprachenwechsel
+- Neue i18n-Strings: Calendar Presets, Fonts, Colors, Flatten Frames
 
 ## 🎨 UI/UX Verbesserungen
 
-- Tab-Icons mit Emojis
-- Build-Stamp zeigt Git SHA + manifest Version
-- Font-Size Workarounds für UXP
-- Log Auto-Scroll
-- Tooltips für alle neuen Features
+- Farbwähler Grid (2 Spalten Layout für Wochentags-Farben)
+- Preset-Listen mit Click-to-Load und Delete-Buttons
+- Font-Familie Dropdown
+- Schriftgröße mit Dezimal-Eingabe
+- Inline-Styling für bessere Lesbarkeit
 
 ## 🔧 Technische Verbesserungen
 
-- getInDesignApp() Safe wrapper
-- getActiveDocumentSafe() Fallback-Chain
-- Seeded RNG für reproduzierbare Layouts
-- Debounce-Utility
-- Live-Preview Registry-System
-- 2000 Log-Einträge
-- Auswahl-Tracking
+- ColorModel & ColorSpace Import für Farb-Handling
+- Async Preset Load/Save mit File System API
+- Wochentag-basierte Farb-Anwendung
+- Font-Property-Handling für TextFrames
+- Swatch-Erstellung für Custom-Farben
 
 ## 📚 Dokumentation
 
-- README Updates (DE/EN)
+- README.md (v1.0.2 → v1.0.4)
+- README_EN.md: Erweiterte Calendar-Sektion
+- README_DE.md: Erweiterte Kalender-Sektion
+- Persistence-Sektion aktualisiert
 - Alle neuen Features dokumentiert
-- AGPL-3.0-or-later Lizenz
-- package.json aktualisiert
 
 ## 🐛 Bugfixes
 
-- Masonry Preset-Größen korrigiert
-- Multi-Format Überlappungen behoben
-- Empty-Frame-Creation nur wenn erlaubt
-- Cell-based Positionierung
+- Font-Anwendung auf Calendar-Frames
+- Farb-Swatch-Handling Fehler
+- Preset-Rendering-Fehler behoben
 
 ## 🔢 Version
 
-**v1.0.2 → v1.0.3**
+**v1.0.3 → v1.0.4**
 
 ## ✅ Testing
 
-- Kalender-Erstellung getestet (alle 5 Layouts)
-- Layout-Presets getestet (alle 9 Varianten)
-- Live-Vorschau in allen Tabs getestet
-- InDesign 2024+ kompatibel
+- Kalender mit verschiedenen Fonts getestet ✅
+- Wochentag-Farben auf alle Tage angewendet ✅
+- Presets speichern/laden funktioniert ✅
+- Deutsche Dezimalnotation funktioniert ✅
+- Flatten Frames Tool getestet ✅
+- All-In-One Feature Set Integration ✅
+
+## 📝 Commits
+
+- feat: Add weekday display options to calendar
+- feat: Add calendar presets, fonts, and per-weekday text colors  
+- docs: Update README files for v1.0.4
