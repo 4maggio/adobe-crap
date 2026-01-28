@@ -348,11 +348,15 @@ const I18N = {
     "help.calendar": "Erstelle automatisch ein Kalender-Grid für Wandkalender mit den Tagen des Monats.",
     "label.calendarYear": "Jahr",
     "label.calendarMonth": "Monat",
+    "label.calendarLayout": "Layout",
+    "help.calendarLayout": "Anordnung der Kalender-Tage",
     "label.calendarStartDay": "Wochenstart",
     "help.calendarStartDay": "Erster Tag der Woche im Kalender",
     "label.calendarCellWidth": "Zellbreite",
     "label.calendarCellHeight": "Zellhöhe",
     "label.calendarShowWeekNumbers": "Kalenderwochen anzeigen",
+    "label.calendarShowWeekdays": "Wochentage anzeigen",
+    "label.calendarWeekdayFormat": "Wochentag-Format",
     "btn.createCalendar": "Kalender erstellen"
   },
   en: {
@@ -405,6 +409,21 @@ const I18N = {
     "tooltip.flattenFrames": "Removes outer frames from nested objects.",
     "tooltip.copyLog": "Copies the log to the clipboard.",
     "tooltip.clearLog": "Clears the log.",
+
+    "title.calendar": "Create calendar",
+    "help.calendar": "Automatically create a calendar grid for wall calendars with the days of the month.",
+    "label.calendarYear": "Year",
+    "label.calendarMonth": "Month",
+    "label.calendarLayout": "Layout",
+    "help.calendarLayout": "Arrangement of calendar days",
+    "label.calendarStartDay": "Week start",
+    "help.calendarStartDay": "First day of the week in the calendar",
+    "label.calendarCellWidth": "Cell width",
+    "label.calendarCellHeight": "Cell height",
+    "label.calendarShowWeekNumbers": "Show week numbers",
+    "label.calendarShowWeekdays": "Show weekdays",
+    "label.calendarWeekdayFormat": "Weekday format",
+    "btn.createCalendar": "Create calendar",
 
     "tooltip.formatWidth": "Format width (mm) for Multi mode.",
     "tooltip.formatHeight": "Format height (mm) for Multi mode.",
@@ -613,6 +632,22 @@ function applyLanguageToUI() {
   setTextById("help-center-content", "help.centerContent");
   setTextById("title-fit-to-frame", "title.fitToFrame");
 
+  // Calendar controls
+  setTextById("title-calendar", "title.calendar");
+  setTextById("help-calendar", "help.calendar");
+  setTextById("label-calendar-year", "label.calendarYear");
+  setTextById("label-calendar-month", "label.calendarMonth");
+  setTextById("label-calendar-layout", "label.calendarLayout");
+  setTextById("help-calendar-layout", "help.calendarLayout");
+  setTextById("label-calendar-start-day", "label.calendarStartDay");
+  setTextById("help-calendar-start-day", "help.calendarStartDay");
+  setTextById("label-calendar-cell-width", "label.calendarCellWidth");
+  setTextById("label-calendar-cell-height", "label.calendarCellHeight");
+  setTextById("label-calendar-show-week-numbers", "label.calendarShowWeekNumbers");
+  setTextById("label-calendar-show-weekdays", "label.calendarShowWeekdays");
+  setTextById("label-calendar-weekday-format", "label.calendarWeekdayFormat");
+  setTextById("btn-create-calendar-text", "btn.createCalendar");
+
   // Live preview labels
   setTextById("label-preview-resize", "ui.livePreview");
   setTextById("label-preview-distribute", "ui.livePreview");
@@ -660,6 +695,7 @@ function applyLanguageToUI() {
   setBtn("apply-distribute-scale-btn", "btn.distributeScale");
   setBtn("center-content-btn", "btn.centerContent");
   setBtn("scale-to-frame-btn", "btn.fitToFrame");
+  setBtn("flatten-frames-btn", "btn.flattenFrames");
   setBtn("add-format-btn", "btn.addFormat");
   setBtn("cancel-edit-format-btn", "btn.cancel");
   setBtn("clear-formats-btn", "btn.clearFormats");
@@ -694,6 +730,7 @@ function applyTooltips() {
     "apply-distribute-scale-btn": "tooltip.applyDistributeScale",
     "center-content-btn": "tooltip.centerContent",
     "scale-to-frame-btn": "tooltip.fitToFrame",
+    "flatten-frames-btn": "tooltip.flattenFrames",
     "copy-log-btn": "tooltip.copyLog",
     "clear-log-btn": "tooltip.clearLog"
     ,
@@ -2677,6 +2714,10 @@ async function createCalendar() {
     let cellWidth = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-cell-width').value)) || 50;
     let cellHeight = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-cell-height').value)) || 40;
     const showWeekNumbers = document.getElementById('calendar-show-week-numbers').checked;
+    const showWeekdaysEl = document.getElementById('calendar-show-weekdays');
+    const showWeekdays = showWeekdaysEl ? showWeekdaysEl.checked : true;
+    const weekdayFormatEl = document.getElementById('calendar-weekday-format');
+    const weekdayFormat = weekdayFormatEl ? weekdayFormatEl.value : 'medium';
 
     appendLog(`📅 Erstelle Kalender: ${month}/${year}, Layout: ${layout}`);
 
@@ -2719,9 +2760,34 @@ async function createCalendar() {
 
     appendLog(`Seite: ${pageWidth.toFixed(3)}×${pageHeight.toFixed(3)}mm`);
 
-    // Weekday names
-    const weekdaysSunday = ['S', 'M', 'D', 'M', 'D', 'F', 'S']; // Sun-Sat
-    const weekdaysMonday = ['M', 'D', 'M', 'D', 'F', 'S', 'S']; // Mon-Sun
+    // Weekday names in different formats
+    const weekdaysShort = ['S', 'M', 'D', 'M', 'D', 'F', 'S']; // Sun-Sat (single letter)
+    const weekdaysMedium = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']; // Sun-Sat (2 letters)
+    const weekdaysLong = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag']; // Full names
+    
+    const getWeekdaysArray = (format, startDayValue) => {
+      let baseArray;
+      switch (format) {
+        case 'short':
+          baseArray = ['S', 'M', 'D', 'M', 'D', 'F', 'S'];
+          break;
+        case 'long':
+          baseArray = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+          break;
+        case 'medium':
+        default:
+          baseArray = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+          break;
+      }
+      
+      // If Monday start, rotate array
+      if (startDayValue === 1) {
+        return [...baseArray.slice(1), baseArray[0]]; // Move Sunday to end
+      }
+      return baseArray;
+    };
+    
+    const weekdays = getWeekdaysArray(weekdayFormat, startDay);
 
     // Calculate days in month
     const date = new Date(year, month - 1, 1);
@@ -2735,8 +2801,11 @@ async function createCalendar() {
       case 'single-row':
         cols = daysInMonth;
         rows = 1;
+        if (showWeekdays) {
+          rows = 2; // Add extra row for weekday headers
+        }
         cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5)); // Auto-fit to page width
-        appendLog(`Single-Row: ${cols} Zellen, Breite: ${cellWidth.toFixed(3)}mm`);
+        appendLog(`Single-Row: ${cols} Zellen${showWeekdays ? ' + Wochentags-Zeile' : ''}, Breite: ${cellWidth.toFixed(3)}mm`);
         break;
 
       case 'single-column':
@@ -2774,8 +2843,7 @@ async function createCalendar() {
     }
 
     // Select weekdays array based on start day (only for grid layout)
-    const weekdays = startDay === 1 ? weekdaysMonday : weekdaysSunday;
-    const headerHeight = layout === 'grid' ? cellHeight * 0.6 : 0; // Header only for grid layout
+    const headerHeight = (layout === 'grid' || (layout === 'single-row' && showWeekdays)) ? cellHeight * 0.6 : 0; // Header only for grid layout or single-row with weekdays
     const calendarWidth = cols * cellWidth;
     const calendarHeight = headerHeight + rows * cellHeight;
 
@@ -2785,15 +2853,30 @@ async function createCalendar() {
 
     appendLog(`Kalender-Grid: ${cols}×${rows} = ${daysInMonth} Tage`);
 
-    // Create weekday header row (only for grid layout)
-    if (layout === 'grid') {
-      for (let col = 0; col < cols; col++) {
+    // Create weekday header row (for grid layout or single-row with showWeekdays)
+    if (layout === 'grid' || (layout === 'single-row' && showWeekdays)) {
+      const headerCols = layout === 'grid' ? 7 : daysInMonth;
+      for (let col = 0; col < headerCols; col++) {
         const x = startX + col * cellWidth;
         const y = startY;
 
         const headerFrame = page.textFrames.add();
         headerFrame.geometricBounds = [y, x, y + headerHeight, x + cellWidth];
-        headerFrame.contents = weekdays[col];
+        
+        // For grid layout, use the standard weekdays
+        if (layout === 'grid') {
+          headerFrame.contents = weekdays[col];
+        } else {
+          // For single-row, show the weekday for the corresponding day
+          // Get the day of week for this column
+          const dayDate = new Date(year, month - 1, col + 1);
+          let dayOfWeek = dayDate.getDay();
+          // Adjust for Monday start if needed
+          if (startDay === 1) {
+            dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          }
+          headerFrame.contents = weekdays[dayOfWeek];
+        }
 
         // Add border
         headerFrame.strokeWeight = 0.5;
@@ -2812,7 +2895,10 @@ async function createCalendar() {
     let day = 1;
     let createdFrames = 0;
 
-    for (let row = 0; row < rows; row++) {
+    // For single-row layout, we only create one row of days (regardless of showWeekdays setting)
+    const dataRows = layout === 'single-row' ? 1 : rows;
+
+    for (let row = 0; row < dataRows; row++) {
       for (let col = 0; col < cols; col++) {
         // Skip cells before first day (only for grid layout)
         if (layout === 'grid' && row === 0 && col < adjustedFirstDay) continue;
@@ -2922,7 +3008,7 @@ async function applyFlattenNestedFrames() {
 
     for (let i = 0; i < doc.selection.length; i++) {
       const item = doc.selection[i];
-      
+
       if (!item) continue;
 
       try {
@@ -2969,7 +3055,7 @@ async function applyFlattenNestedFrames() {
           }
 
           // Markiere äußeren Rahmen zum Löschen
-          itemsToDelete.push({item: parent, originalIndex: i, label: parent.id ? `ID ${parent.id}` : `Index ${i}`});
+          itemsToDelete.push({ item: parent, originalIndex: i, label: parent.id ? `ID ${parent.id}` : `Index ${i}` });
           flattened++;
           appendLog(`Flatten: Äußerer Rahmen ${itemsToDelete[itemsToDelete.length - 1].label} zum Löschen vorgemerkt`);
         } else if (parent) {
@@ -3014,7 +3100,7 @@ function checkForNestedFrames(item) {
   try {
     // Prüfe ob item mehrere Rahmen/Grafiken enthält
     if (!item) return false;
-    
+
     let frameCount = 0;
     if (item.rectangles && item.rectangles.length > 0) frameCount += item.rectangles.length;
     if (item.ovals && item.ovals.length > 0) frameCount += item.ovals.length;

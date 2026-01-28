@@ -1351,7 +1351,20 @@
             <label for="calendar-show-week-numbers" id="label-calendar-show-week-numbers">Kalenderwochen
               anzeigen</label>
           </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="calendar-show-weekdays" checked>
+            <label for="calendar-show-weekdays" id="label-calendar-show-weekdays" data-i18n="label.calendarShowWeekdays">Wochentage anzeigen</label>
+          </div>
         </div>
+      </div>
+
+      <div class="form-group" id="calendar-weekday-format-group">
+        <label for="calendar-weekday-format" id="label-calendar-weekday-format" data-i18n="label.calendarWeekdayFormat">Wochentag-Format</label>
+        <select id="calendar-weekday-format">
+          <option value="short">Kurz (M D M D F)</option>
+          <option value="medium" selected>Mittel (Mo Di Mi Do Fr)</option>
+          <option value="long">Lang (Montag Dienstag...)</option>
+        </select>
       </div>
 
       <div class="form-group">
@@ -1422,7 +1435,8 @@
 
       <div class="section-title">Verschachtelte Rahmen</div>
       <div class="form-group">
-        <p class="helper-text">Entfernt äußere Rahmen bei verschachtelten Objekten und behält nur den innersten Rahmen mit dem Inhalt.</p>
+        <p class="helper-text">Entfernt äußere Rahmen bei verschachtelten Objekten und behält nur den innersten Rahmen
+          mit dem Inhalt.</p>
       </div>
       <div class="button-group">
         <button class="btn-primary" id="flatten-frames-btn">Rahmen vereinfachen</button>
