@@ -1,14 +1,14 @@
 # InDesign Page & Frame Tools (UXP Panel)
 
-Ein UXP-Panel für Adobe InDesign zum schnellen Skalieren, Verteilen und Layouten von Rahmen/Objekten auf Seiten oder innerhalb einer Auswahl.
+Ein UXP-Panel für Adobe InDesign zum schnellen Skalieren, Verteilen und Layouten von Rahmen/Objekten auf Seiten, sowie zum Erstellen von anpassbaren Wandkalendern. Unterstützt Deutsch und Englisch mit vollständiger Lokalisierung inklusive deutscher Dezimalnotation (Kommas).
 
 ## Tabs (UI)
 
-- 📐 **Größe**: feste Zielgröße + Templates
+- 📐 **Größe**: feste Zielgröße + Templates (unterstützt 3 Dezimalstellen)
 - ↔ **Verteilen**: nur Positionen (ohne Skalierung)
 - ⧉ **Layout**: Verteilen & Skalieren (Single- oder Multi-Format, Grid/Masonry)
-- 🛠 **Tools**: Hilfsfunktionen für Rahmen/Inhalt
-- 📅 **Kalender**: Wandkalender-Generator mit verschiedenen Layouts
+- 🛠 **Tools**: Hilfsfunktionen für Rahmen/Inhalt, Rahmen vereinfachen
+- 📅 **Kalender**: Wandkalender-Generator mit Schriften, Farben & Vorlagen
 - ⚙ **Einst.**: Sprache, UI-Größen, Log/Popups
 
 ## Features & Verwendung
@@ -74,6 +74,7 @@ Zusatz im Layout-Tab:
 
 - **Inhalt zentrieren**: zentriert Grafiken innerhalb ausgewählter Rahmen
 - **An Rahmen anpassen**: passt Inhalt an den Rahmen an (je nach Modus)
+- **Rahmen vereinfachen**: entfernt äußere Rahmen von verschachtelten Objekten
 
 ### 5) ⚙ Einst.
 
@@ -86,8 +87,9 @@ Zusatz im Layout-Tab:
 
 Die Daten werden im Plugin-Datenordner per UXP File System API gespeichert:
 
-- `templates.json` (Templates)
-- `settings.json` (UI-Einstellungen, Multi-Formate, Masonry-Optionen, Toggles, …)
+- `templates.json` (Größen-Templates)
+- `settings.json` (UI-Einstellungen, Multi-Formate, Masonry-Optionen, Toggles, Sprache)
+- `calendar-presets.json` (Kalender-Vorlagen mit allen Einstellungen)
 
 ## Installation
 
@@ -116,7 +118,8 @@ Die Daten werden im Plugin-Datenordner per UXP File System API gespeichert:
 ### Persistenz
 
 - `templates.json`: Größen-Templates
-- `settings.json`: UI-Settings, Multi-Formate, Masonry-Optionen, Toggles
+- `settings.json`: UI-Settings, Multi-Formate, Masonry-Optionen, Toggles, Sprache
+- `calendar-presets.json`: Kalender-Vorlagen mit allen Einstellungen (Layout, Schriften, Farben)
 
 Hinweis: Bei UI/JS-Caching in UXP hilft der Build-Stamp im Tab **⚙ Einst.**.
 
@@ -129,24 +132,49 @@ Hinweis: Bei UI/JS-Caching in UXP hilft der Build-Stamp im Tab **⚙ Einst.**.
 - **„Seite auffüllen“**: Nur aktivieren, wenn zusätzliche (leere) Rahmen ok sind.
 ### 5) 📅 Kalender (Wandkalender-Generator)
 
-- Automatische Erstellung von Kalender-Grids für Wandkalender
+#### Grundeinstellungen
+
 - **Jahr & Monat**: Wähle Jahr (2020-2100) und Monat
 - **Layout-Presets**:
-  - **Klassisches Grid (7×N)**: Wochentags-Layout mit Header (M D M D F S S)
+  - **Klassisches Grid (7×N)**: Wochentags-Layout mit Header
   - **Eine Zeile**: Alle Tage horizontal (Auto-Anpassung an Seitenbreite)
   - **Eine Spalte**: Alle Tage vertikal (Auto-Anpassung an Seitenhöhe)
   - **Zwei Zeilen**: Gleichmäßige Verteilung auf 2 Zeilen
   - **Drei Zeilen**: Gleichmäßige Verteilung auf 3 Zeilen
 - **Wochenstart**: Montag oder Sonntag (nur Grid-Layout)
-- **Zellgröße**: Breite und Höhe in mm (kann automatisch angepasst werden)
+- **Zellgröße**: Breite und Höhe in mm (unterstützt 3 Dezimalstellen und deutsche Dezimalschreibweise mit Komma)
+
+#### Wochentag-Anzeigoptionen
+
+- **Wochentage anzeigen**: Umschalter zur Anzeige von Wochentag-Kopfzeilen
+- **Wochentag-Format**: Wählen zwischen
+  - **Kurz**: Einzelne Buchstaben (M D M D F S S)
+  - **Mittel**: 2-stellige Abkürzungen (Mo Di Mi Do Fr Sa So)
+  - **Lang**: Volle Wochentagnamen (Montag, Dienstag, ...)
+
+#### Typografie & Styling
+
+- **Schriftart**: Wähle aus Arial, Helvetica, Times New Roman, Courier, Verdana, Georgia
+- **Schriftgröße**: 6–72 pt mit Dezimal-Unterstützung
+- **Wochentag-Farben**: Stelle individuelle Textfarben für jeden Wochentag ein (Sonntag–Samstag)
+  - Farbwähler für jeden Wochentag
+  - Farben werden automatisch beim Erstellen des Kalenders angewendet
+
+#### Kalender-Vorlagen
+
+- **Vorlage speichern**: Speichere alle aktuellen Einstellungen (Layout, Größe, Schriften, Farben) mit einem Namen
+- **Vorlage laden**: Klicke auf eine gespeicherte Vorlage, um alle Einstellungen wiederherzustellen
+- **Vorlage löschen**: Entferne unerwünschte Vorlagen
+- Vorlagen werden in `calendar-presets.json` persistent gespeichert
 
 Schritte:
 1. Dokument mit mindestens einer Seite öffnen
-2. Jahr, Monat und Layout wählen
-3. Zellgröße nach Bedarf anpassen
+2. Kalender-Einstellungen konfigurieren (Layout, Zellgröße, Schriften, Farben, etc.)
+3. *(Optional)* Als Vorlage speichern für zukünftige Verwendung
 4. **Kalender erstellen**
 
-Das Plugin erstellt automatisch Textrahmen mit Tagesnummern, zentriert auf der Seite, mit 0,5pt schwarzen Rändern.
+Das Plugin erstellt automatisch Textrahmen mit Tagesnummern, zentriert auf der Seite, mit 0,5pt schwarzen Rändern und angewendeten benutzerdefinierten Schriften/Farben.
+
 ## Troubleshooting
 
 - **„Kein aktives Dokument“**: Dokument öffnen und sicherstellen, dass ein Dokument aktiv ist

@@ -10,9 +10,9 @@ Monorepo for custom Adobe plugins.
 ## Available plugins
 
 - InDesign
-	- `InDesign_PP` — **InDesign Page & Frame Tools** (v1.0.2)
+	- `InDesign_PP` — **InDesign Page & Frame Tools** (v1.0.4)
 		- InDesign 2024+ (minVersion 20.5.0)
-		- InDesign plugin for frame sizing, distribution, and layout generation
+		- InDesign plugin for frame sizing, distribution, layout generation, and calendar creation
 		- Docs: [DE](InDesign/InDesign_PP/README_DE.md) | [EN](InDesign/InDesign_PP/README_EN.md)
 
 ## Installation
