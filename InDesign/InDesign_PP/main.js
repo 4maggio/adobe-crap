@@ -35,6 +35,74 @@ function getActiveDocumentSafe() {
   return null;
 }
 
+// Font loading for calendar
+function loadAvailableFonts() {
+  try {
+    const app = getInDesignApp();
+    if (!app) return getDefaultFonts();
+
+    let fontList = [];
+    try {
+      if (app.fonts && app.fonts.length > 0) {
+        for (let i = 0; i < app.fonts.length; i++) {
+          try {
+            const font = app.fonts[i];
+            if (font && font.name) fontList.push(font.name);
+          } catch (e) { }
+        }
+      }
+    } catch (e) { }
+
+    if (fontList.length > 0) {
+      fontList.sort((a, b) => a.localeCompare(b));
+      return fontList;
+    }
+    return getDefaultFonts();
+  } catch (err) {
+    return getDefaultFonts();
+  }
+}
+
+function getDefaultFonts() {
+  return ['Arial', 'Arial Black', 'Courier New', 'Georgia', 'Times New Roman',
+    'Trebuchet MS', 'Verdana', 'Minion Pro', 'Garamond', 'Helvetica'].sort();
+}
+
+function populateFontDropdown() {
+  try {
+    const fontSelect = document.getElementById('calendar-font-family');
+    if (!fontSelect) {
+      console.warn('calendar-font-family element not found');
+      return;
+    }
+
+    // Clear existing options except the first (placeholder)
+    const placeholder = fontSelect.options[0];
+    fontSelect.innerHTML = '';
+    if (placeholder) {
+      fontSelect.appendChild(placeholder);
+    }
+
+    const fonts = loadAvailableFonts();
+    
+    if (fontSelect.options.length > 0) {
+      fontSelect.options[0].textContent = fonts.length === 0 ? '-- Keine Schriften verfügbar --' : '-- Schrift wählen --';
+    }
+
+    fonts.forEach(fontName => {
+      const option = document.createElement('option');
+      option.value = fontName;
+      option.textContent = fontName;
+      fontSelect.appendChild(option);
+    });
+
+    if (typeof appendLog === 'function') appendLog(`${fonts.length} Schriften geladen`);
+  } catch (err) {
+    console.error('populateFontDropdown error:', err);
+    if (typeof appendLog === 'function') appendLog(`Fehler beim Laden der Schriften: ${err.message}`);
+  }
+}
+
 function xmur3(str) {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) {
@@ -70,11 +138,18 @@ function seededShuffle(arr, seedStr) {
   return arr;
 }
 
+// Track if panel has been initialized to prevent double-initialization
+let isPanelInitialized = false;
+
 function safeInitPanel(source) {
-  if (panelInitialized) return;
+  // Check if already initialized using global flag
+  if (isPanelInitialized) {
+    return; // Already initialized
+  }
+
   try {
     initPanel();
-    panelInitialized = true;
+    isPanelInitialized = true;
     try {
       appendLog(`UI: initPanel via ${source}`);
     } catch (_) {
@@ -818,6 +893,25 @@ entrypoints.setup({
       show() {
         // Panel wird automatisch mit index.html geladen
         safeInitPanel('entrypoints.show');
+      },
+      hide() {
+        // Reset initialization flag when panel is hidden/unloaded
+        isPanelInitialized = false;
+        
+        // Cleanup: clear selection interval
+        if (window.__ppSelectionInterval) {
+          clearInterval(window.__ppSelectionInterval);
+          window.__ppSelectionInterval = null;
+        }
+        
+        // Cleanup: revert any live previews
+        try {
+          if (typeof revertAllLivePreviews === 'function') {
+            revertAllLivePreviews();
+          }
+        } catch (_) {
+          // ignore
+        }
       }
     }
   }
@@ -1597,7 +1691,7 @@ function loadCalendarPreset(index) {
     document.getElementById('calendar-weekday-format').value = preset.weekdayFormat;
     document.getElementById('calendar-font-family').value = preset.fontFamily;
     document.getElementById('calendar-font-size').value = preset.fontSize;
-    
+
     // Load colors
     if (preset.weekdayColors) {
       document.getElementById('calendar-color-sunday').value = preset.weekdayColors[0];
@@ -1608,7 +1702,7 @@ function loadCalendarPreset(index) {
       document.getElementById('calendar-color-friday').value = preset.weekdayColors[5];
       document.getElementById('calendar-color-saturday').value = preset.weekdayColors[6];
     }
-    
+
     appendLog(`Vorlage geladen: ${preset.name}`);
   }
 }
@@ -1978,9 +2072,10 @@ function distributeGrid(items, pageBounds, cols, rows, horizontal, vertical, gap
 // ============================
 
 async function applyDistributeScale() {
-  const areaMode = getCheckedRadioValue('scale-distribution-area', 'page');
-  const formatMode = getCheckedRadioValue('format-mode', 'single');
   try {
+    const areaMode = getCheckedRadioValue('scale-distribution-area', 'page');
+    const formatMode = getCheckedRadioValue('format-mode', 'single');
+    
     const doc = getActiveDocumentSafe();
     if (!doc) {
       showMessage(t('msg.noActiveDocument'), true);
@@ -2013,8 +2108,6 @@ async function applyDistributeScale() {
       showMessage(t('msg.chooseScaleTarget'), true);
       return;
     }
-
-    const areaMode = getCheckedRadioValue('scale-distribution-area', 'page');
 
     // Sammle Objekte
     const items = [];
@@ -2057,8 +2150,7 @@ async function applyDistributeScale() {
 
     appendLog(`Verteilen & Skalieren gestartet: ${items.length} Objekt(e), spacing=${spacing}, Frame=${scaleFrame}, Inhalt=${scaleContent}, Bereich=${areaMode}`);
 
-    // Prüfe Format-Modus
-    const formatMode = getCheckedRadioValue('format-mode', 'single');
+    // Prüfe Format-Modus (bereits am Anfang der Funktion deklariert)
 
     const layoutStyleEl = document.getElementById('multi-layout-style');
     const multiLayoutStyle = layoutStyleEl ? layoutStyleEl.value : (pluginSettings.multiLayoutStyle || 'grid');
@@ -2912,11 +3004,11 @@ async function createCalendar() {
     const showWeekdays = showWeekdaysEl ? showWeekdaysEl.checked : true;
     const weekdayFormatEl = document.getElementById('calendar-weekday-format');
     const weekdayFormat = weekdayFormatEl ? weekdayFormatEl.value : 'medium';
-    
+
     // Get font and color settings
     const fontFamily = document.getElementById('calendar-font-family').value || 'Arial';
     const fontSize = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-font-size').value)) || 10;
-    
+
     // Get weekday colors
     const weekdayColors = [
       document.getElementById('calendar-color-sunday').value || '#000000',
@@ -3135,12 +3227,12 @@ async function createCalendar() {
         try {
           if (frame.paragraphs && frame.paragraphs.length > 0) {
             const para = frame.paragraphs[0];
-            
+
             // Set font size
             if (para.characterStyleRange && para.characterStyleRange.pointSize !== undefined) {
               para.characterStyleRange.pointSize = fontSize;
             }
-            
+
             // Try to apply font
             try {
               if (para.characterStyleRange && para.characterStyleRange.appliedFont !== undefined) {
@@ -3152,7 +3244,7 @@ async function createCalendar() {
             } catch (e) {
               // Font not available, continue without it
             }
-            
+
             // Apply weekday color
             try {
               const hexColor = weekdayColors[dayOfWeek];
@@ -3160,7 +3252,7 @@ async function createCalendar() {
               const r = parseInt(hexColor.substr(1, 2), 16);
               const g = parseInt(hexColor.substr(3, 2), 16);
               const b = parseInt(hexColor.substr(5, 2), 16);
-              
+
               // Try to create or find color
               let colorSwatch = null;
               try {
@@ -3176,7 +3268,7 @@ async function createCalendar() {
                   // Swatch creation failed
                 }
               }
-              
+
               if (colorSwatch && colorSwatch.isValid) {
                 para.characterStyleRange.fillColor = colorSwatch;
               }
@@ -4179,26 +4271,29 @@ function initPanel() {
   }
 
   // Track selection changes and log object count
-  let lastSelectionCount = -1;
-  const checkSelection = () => {
-    try {
-      const { app } = require('indesign');
-      if (app && app.activeDocument && app.activeDocument.selection) {
-        const count = app.activeDocument.selection.length;
-        if (count !== lastSelectionCount) {
-          lastSelectionCount = count;
-          appendLog(`📋 Auswahl: ${count} Objekt(e)`);
+  // Only create one interval - check if it already exists
+  if (!window.__ppSelectionInterval) {
+    let lastSelectionCount = -1;
+    const checkSelection = () => {
+      try {
+        const { app } = require('indesign');
+        if (app && app.activeDocument && app.activeDocument.selection) {
+          const count = app.activeDocument.selection.length;
+          if (count !== lastSelectionCount) {
+            lastSelectionCount = count;
+            appendLog(`📋 Auswahl: ${count} Objekt(e)`);
+          }
         }
+      } catch (e) {
+        // Ignore - no document open or other error
       }
-    } catch (e) {
-      // Ignore - no document open or other error
-    }
-  };
+    };
 
-  // Poll every 500ms for selection changes
-  setInterval(checkSelection, 500);
-  // Initial check
-  setTimeout(checkSelection, 100);
+    // Poll every 500ms for selection changes
+    window.__ppSelectionInterval = setInterval(checkSelection, 500);
+    // Initial check
+    setTimeout(checkSelection, 100);
+  }
 
   const gridSettingsEl = document.getElementById('grid-settings');
   const singleFormatEl = document.getElementById('single-format-settings');
@@ -4257,6 +4352,16 @@ function initPanel() {
           else if (targetTab === 'distribute') requestLivePreview('distribute');
           else if (targetTab === 'distribute-scale') requestLivePreview('distributeScale');
           else if (targetTab === 'presets') requestLivePreview('preset');
+          else if (targetTab === 'calendar') {
+            // Defer font loading to ensure DOM is ready
+            setTimeout(() => {
+              try { 
+                populateFontDropdown(); 
+              } catch (e) { 
+                console.error('Calendar tab font loading error:', e);
+              }
+            }, 50);
+          }
           else if (targetTab === 'tools') {
             requestLivePreview('fitToFrame');
             requestLivePreview('centerContent');

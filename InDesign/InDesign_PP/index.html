@@ -1373,12 +1373,7 @@
       <div class="form-group">
         <label for="calendar-font-family" id="label-calendar-font-family">Schriftart</label>
         <select id="calendar-font-family">
-          <option value="Arial" selected>Arial</option>
-          <option value="Helvetica">Helvetica</option>
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Courier">Courier</option>
-          <option value="Verdana">Verdana</option>
-          <option value="Georgia">Georgia</option>
+          <option value="">-- Schriften laden... --</option>
         </select>
       </div>
 
@@ -1395,32 +1390,32 @@
         <h4 id="label-calendar-weekday-colors" style="margin-bottom: 8px;">Wochentag-Farben</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-sunday" style="margin: 0;">So</label>
-            <input type="color" id="calendar-color-sunday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">So</label>
+            <input type="color" id="calendar-color-sunday" value="#000000" style="flex: 1; height: 28px;">
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-monday" style="margin: 0;">Mo</label>
-            <input type="color" id="calendar-color-monday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Mo</label>
+            <input type="color" id="calendar-color-monday" value="#000000" style="flex: 1; height: 28px;">
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-tuesday" style="margin: 0;">Di</label>
-            <input type="color" id="calendar-color-tuesday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Di</label>
+            <input type="color" id="calendar-color-tuesday" value="#000000" style="flex: 1; height: 28px;">
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-wednesday" style="margin: 0;">Mi</label>
-            <input type="color" id="calendar-color-wednesday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Mi</label>
+            <input type="color" id="calendar-color-wednesday" value="#000000" style="flex: 1; height: 28px;">
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-thursday" style="margin: 0;">Do</label>
-            <input type="color" id="calendar-color-thursday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Do</label>
+            <input type="color" id="calendar-color-thursday" value="#000000" style="flex: 1; height: 28px;">
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-friday" style="margin: 0;">Fr</label>
-            <input type="color" id="calendar-color-friday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Fr</label>
+            <input type="color" id="calendar-color-friday" value="#000000" style="flex: 1; height: 28px;">
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="calendar-color-saturday" style="margin: 0;">Sa</label>
-            <input type="color" id="calendar-color-saturday" value="#000000">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Sa</label>
+            <input type="color" id="calendar-color-saturday" value="#000000" style="flex: 1; height: 28px;">
           </div>
         </div>
       </div>
@@ -1434,7 +1429,8 @@
             <span id="btn-save-calendar-preset-text">Speichern</span>
           </button>
         </div>
-        <div id="calendar-preset-list" style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 4px;"></div>
+        <div id="calendar-preset-list"
+          style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 4px;"></div>
       </div>
 
       <div class="form-group">
