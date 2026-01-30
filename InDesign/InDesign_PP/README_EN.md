@@ -1,14 +1,14 @@
 # InDesign Page & Frame Tools (UXP Panel)
 
-A UXP panel for Adobe InDesign to quickly resize, distribute, and generate layouts for frames/objects on a page or within a selection.
+A UXP panel for Adobe InDesign to quickly resize, distribute, generate layouts for frames/objects, and create customizable wall calendars. Supports German and English with full localization including German decimal notation (commas).
 
 ## Tabs (UI)
 
-- 📐 **Size**: fixed target size + templates
+- 📐 **Size**: fixed target size + templates (supports 3 decimal places)
 - ↔ **Distribute**: positions only (no scaling)
 - ⧉ **Layout**: Distribute & Scale (Single or Multi formats, Grid/Masonry)
-- 🛠 **Tools**: frame/content helpers
-- 📅 **Calendar**: Wall calendar generator with various layouts
+- 🛠 **Tools**: frame/content helpers, flatten nested frames
+- 📅 **Calendar**: Wall calendar generator with fonts, colors & presets
 - ⚙ **Prefs**: language, UI sizing, log/popups
 
 ## Features & Usage
@@ -74,6 +74,7 @@ Layout extras:
 
 - **Center content**: centers graphics within selected frames
 - **Fit to frame**: fits content to frame (depending on the selected mode)
+- **Flatten frames**: removes outer frames from nested objects
 
 ### 5) ⚙ Prefs
 
@@ -86,8 +87,9 @@ Layout extras:
 
 Data is stored in the plugin’s data folder via the UXP File System API:
 
-- `templates.json` (templates)
-- `settings.json` (UI settings, multi formats, masonry options, toggles, ...)
+- `templates.json` (size templates)
+- `settings.json` (UI settings, multi formats, masonry options, toggles, language)
+- `calendar-presets.json` (calendar presets with all settings)
 
 ## Installation
 
@@ -116,7 +118,8 @@ Data is stored in the plugin’s data folder via the UXP File System API:
 ### Persistence
 
 - `templates.json`: size templates
-- `settings.json`: UI settings, multi formats, masonry options, toggles
+- `settings.json`: UI settings, multi formats, masonry options, toggles, language
+- `calendar-presets.json`: calendar presets with all settings (layout, fonts, colors)
 
 Note: if UXP caches UI/JS, the build stamp is shown in the **⚙ Prefs** tab.
 
@@ -130,24 +133,48 @@ Note: if UXP caches UI/JS, the build stamp is shown in the **⚙ Prefs** tab.
 
 ### 5) 📅 Calendar (Wall Calendar Generator)
 
-- Automatic creation of calendar grids for wall calendars
+#### Basic Settings
+
 - **Year & Month**: Select year (2020-2100) and month
 - **Layout Presets**:
-  - **Classic Grid (7×N)**: Weekly layout with header row (M T W T F S S)
+  - **Classic Grid (7×N)**: Weekly layout with header row
   - **Single Row**: All days horizontally (auto-fits to page width)
   - **Single Column**: All days vertically (auto-fits to page height)
   - **Two Rows**: Even distribution across 2 rows
   - **Three Rows**: Even distribution across 3 rows
 - **Week Start**: Monday or Sunday (Grid layout only)
-- **Cell Size**: Width and height in mm (can be auto-adjusted)
+- **Cell Size**: Width and height in mm (supports 3 decimal places, German decimal notation with comma)
+
+#### Weekday Display Options
+
+- **Show weekdays**: Toggle to display weekday headers
+- **Weekday format**: Choose between
+  - **Short**: Single letters (M D M D F S S)
+  - **Medium**: 2-letter abbreviations (Mo Di Mi Do Fr Sa Su)
+  - **Long**: Full weekday names (Monday, Tuesday, ...)
+
+#### Typography & Styling
+
+- **Font family**: Choose from Arial, Helvetica, Times New Roman, Courier, Verdana, Georgia
+- **Font size**: 6–72 pt with decimal support
+- **Weekday colors**: Set individual text colors for each day of the week (Sunday–Saturday)
+  - Color picker for each weekday
+  - Colors automatically applied when calendar is created
+
+#### Calendar Presets
+
+- **Save calendar preset**: Store all current settings (layout, size, fonts, colors) with a name
+- **Load preset**: Click a saved preset to restore all settings
+- **Delete preset**: Remove unwanted presets
+- Presets are persisted in `calendar-presets.json`
 
 Steps:
 1. Open document with at least one page
-2. Select year, month and layout
-3. Adjust cell size as needed
+2. Configure calendar settings (layout, cell size, fonts, colors, etc.)
+3. *(Optional)* Save as a preset for future use
 4. Click **Create Calendar**
 
-The plugin automatically creates text frames with day numbers, centered on the page, with 0.5pt black borders.
+The plugin automatically creates text frames with day numbers, centered on the page, with 0.5pt black borders and custom fonts/colors applied.
 
 ## Troubleshooting
 

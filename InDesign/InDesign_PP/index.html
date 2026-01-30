@@ -93,11 +93,15 @@
       display: inline-block;
       margin-right: 6px;
       line-height: 1;
+      pointer-events: none;
+      /* Ensure clicks pass through to button */
     }
 
     .tab-label {
       display: inline-block;
       line-height: 1.1;
+      pointer-events: none;
+      /* Ensure clicks pass through to button */
     }
 
     @media (prefers-color-scheme: dark) {
@@ -1351,7 +1355,86 @@
             <label for="calendar-show-week-numbers" id="label-calendar-show-week-numbers">Kalenderwochen
               anzeigen</label>
           </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="calendar-show-weekdays" checked>
+            <label for="calendar-show-weekdays" id="label-calendar-show-weekdays"
+              data-i18n="label.calendarShowWeekdays">Wochentage anzeigen</label>
+          </div>
         </div>
+      </div>
+
+      <div class="form-group" id="calendar-weekday-format-group">
+        <label for="calendar-weekday-format" id="label-calendar-weekday-format"
+          data-i18n="label.calendarWeekdayFormat">Wochentag-Format</label>
+        <select id="calendar-weekday-format">
+          <option value="short">Kurz (M D M D F)</option>
+          <option value="medium" selected>Mittel (Mo Di Mi Do Fr)</option>
+          <option value="long">Lang (Montag Dienstag...)</option>
+        </select>
+      </div>
+
+      <!-- Font Settings -->
+      <div class="form-group">
+        <label for="calendar-font-family" id="label-calendar-font-family">Schriftart</label>
+        <select id="calendar-font-family">
+          <option value="">-- Schriften laden... --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="calendar-font-size" id="label-calendar-font-size">Schriftgröße</label>
+        <div class="form-row">
+          <input type="number" id="calendar-font-size" class="input-medium" step="0.5" min="6" max="72" value="10">
+          <span class="unit-label">pt</span>
+        </div>
+      </div>
+
+      <!-- Weekday Colors -->
+      <div class="form-group">
+        <h4 id="label-calendar-weekday-colors" style="margin-bottom: 8px;">Wochentag-Farben</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">So</label>
+            <input type="color" id="calendar-color-sunday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Mo</label>
+            <input type="color" id="calendar-color-monday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Di</label>
+            <input type="color" id="calendar-color-tuesday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Mi</label>
+            <input type="color" id="calendar-color-wednesday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Do</label>
+            <input type="color" id="calendar-color-thursday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Fr</label>
+            <input type="color" id="calendar-color-friday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="margin: 0; width: 20px; font-size: 12px;">Sa</label>
+            <input type="color" id="calendar-color-saturday" value="#000000" style="flex: 1; height: 28px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Presets -->
+      <div class="form-group">
+        <h4 id="label-calendar-presets-title" style="margin-bottom: 8px;">Kalender-Vorlagen</h4>
+        <div style="display: flex; gap: 4px; margin-bottom: 8px;">
+          <input type="text" id="calendar-preset-name" placeholder="Vorlagenname..." class="input-medium">
+          <button id="btn-save-calendar-preset" class="button-small">
+            <span id="btn-save-calendar-preset-text">Speichern</span>
+          </button>
+        </div>
+        <div id="calendar-preset-list"
+          style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 4px;"></div>
       </div>
 
       <div class="form-group">
@@ -1416,6 +1499,17 @@
       </div>
       <div class="button-group">
         <button class="btn-primary" id="scale-to-frame-btn">An Rahmen anpassen</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-title">Verschachtelte Rahmen</div>
+      <div class="form-group">
+        <p class="helper-text">Entfernt äußere Rahmen bei verschachtelten Objekten und behält nur den innersten Rahmen
+          mit dem Inhalt.</p>
+      </div>
+      <div class="button-group">
+        <button class="btn-primary" id="flatten-frames-btn">Rahmen vereinfachen</button>
       </div>
     </div>
 
