@@ -8,6 +8,7 @@ A UXP panel for Adobe InDesign to quickly resize, distribute, and generate layou
 - ↔ **Distribute**: positions only (no scaling)
 - ⧉ **Layout**: Distribute & Scale (Single or Multi formats, Grid/Masonry)
 - 🛠 **Tools**: frame/content helpers
+- 📅 **Calendar**: Wall calendar generator with various layouts
 - ⚙ **Prefs**: language, UI sizing, log/popups
 
 ## Features & Usage
@@ -126,6 +127,27 @@ Note: if UXP caches UI/JS, the build stamp is shown in the **⚙ Prefs** tab.
 - **Auto scale formats to fit**: Enable when formats might be larger than the target area (prevents “can never fit”).
 - **Masonry**: Start with a small column count (e.g. 2–3) and set a Seed for reproducible results.
 - **Fill page**: Enable only if adding extra (empty) frames is acceptable.
+
+### 5) 📅 Calendar (Wall Calendar Generator)
+
+- Automatic creation of calendar grids for wall calendars
+- **Year & Month**: Select year (2020-2100) and month
+- **Layout Presets**:
+  - **Classic Grid (7×N)**: Weekly layout with header row (M T W T F S S)
+  - **Single Row**: All days horizontally (auto-fits to page width)
+  - **Single Column**: All days vertically (auto-fits to page height)
+  - **Two Rows**: Even distribution across 2 rows
+  - **Three Rows**: Even distribution across 3 rows
+- **Week Start**: Monday or Sunday (Grid layout only)
+- **Cell Size**: Width and height in mm (can be auto-adjusted)
+
+Steps:
+1. Open document with at least one page
+2. Select year, month and layout
+3. Adjust cell size as needed
+4. Click **Create Calendar**
+
+The plugin automatically creates text frames with day numbers, centered on the page, with 0.5pt black borders.
 
 ## Troubleshooting
 

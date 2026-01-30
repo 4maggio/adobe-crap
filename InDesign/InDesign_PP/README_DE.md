@@ -8,6 +8,7 @@ Ein UXP-Panel für Adobe InDesign zum schnellen Skalieren, Verteilen und Layoute
 - ↔ **Verteilen**: nur Positionen (ohne Skalierung)
 - ⧉ **Layout**: Verteilen & Skalieren (Single- oder Multi-Format, Grid/Masonry)
 - 🛠 **Tools**: Hilfsfunktionen für Rahmen/Inhalt
+- 📅 **Kalender**: Wandkalender-Generator mit verschiedenen Layouts
 - ⚙ **Einst.**: Sprache, UI-Größen, Log/Popups
 
 ## Features & Verwendung
@@ -40,7 +41,7 @@ Schritte:
 
 ### 3) ⧉ Layout (Verteilen & Skalieren)
 
-#### Single-Modus (wie bisher)
+#### Single-Modus 
 
 - Abstand + Bereich wie oben
 - **Was skalieren?** Rahmen, Inhalt oder beides
@@ -126,7 +127,26 @@ Hinweis: Bei UI/JS-Caching in UXP hilft der Build-Stamp im Tab **⚙ Einst.**.
 - **„Formate an Seite anpassen“**: Aktivieren, wenn Formate größer als der Bereich sein könnten (verhindert „passt nie“).
 - **Masonry**: Spaltenzahl klein starten (z.B. 2–3), Seed setzen, damit Ergebnisse reproduzierbar sind.
 - **„Seite auffüllen“**: Nur aktivieren, wenn zusätzliche (leere) Rahmen ok sind.
+### 5) 📅 Kalender (Wandkalender-Generator)
 
+- Automatische Erstellung von Kalender-Grids für Wandkalender
+- **Jahr & Monat**: Wähle Jahr (2020-2100) und Monat
+- **Layout-Presets**:
+  - **Klassisches Grid (7×N)**: Wochentags-Layout mit Header (M D M D F S S)
+  - **Eine Zeile**: Alle Tage horizontal (Auto-Anpassung an Seitenbreite)
+  - **Eine Spalte**: Alle Tage vertikal (Auto-Anpassung an Seitenhöhe)
+  - **Zwei Zeilen**: Gleichmäßige Verteilung auf 2 Zeilen
+  - **Drei Zeilen**: Gleichmäßige Verteilung auf 3 Zeilen
+- **Wochenstart**: Montag oder Sonntag (nur Grid-Layout)
+- **Zellgröße**: Breite und Höhe in mm (kann automatisch angepasst werden)
+
+Schritte:
+1. Dokument mit mindestens einer Seite öffnen
+2. Jahr, Monat und Layout wählen
+3. Zellgröße nach Bedarf anpassen
+4. **Kalender erstellen**
+
+Das Plugin erstellt automatisch Textrahmen mit Tagesnummern, zentriert auf der Seite, mit 0,5pt schwarzen Rändern.
 ## Troubleshooting
 
 - **„Kein aktives Dokument“**: Dokument öffnen und sicherstellen, dass ein Dokument aktiv ist

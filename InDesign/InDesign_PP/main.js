@@ -139,6 +139,29 @@ let definedFormats = [];
 let editFormatIndex = null;
 
 // ============================
+
+// Hilfsfunktion: Rundet nur, wenn mehr als 3 Nachkommastellen vorhanden sind
+function roundToMax3Decimals(n) {
+  if (typeof n !== "number" || isNaN(n)) return n;
+  const str = n.toString();
+  const parts = str.split(".");
+  if (parts.length === 2 && parts[1].length > 3) {
+    return Number(n.toFixed(3));
+  }
+  return n;
+}
+
+// Hilfsfunktion: Normalisiert Input-String (Komma → Punkt) und parst zu Float
+function parseLocalizedFloat(inputValue) {
+  if (typeof inputValue === 'object' && inputValue.value !== undefined) {
+    inputValue = inputValue.value;
+  }
+  const str = String(inputValue || '').trim();
+  // Ersetze Komma durch Punkt für lokalisierte Eingabe (deutsche Notation)
+  const normalized = str.replace(',', '.');
+  return parseFloat(normalized);
+}
+
 // Settings + i18n
 // ============================
 
@@ -151,6 +174,7 @@ const DEFAULT_SETTINGS = {
   allowEmptyFrames: false,
   scaleFormatsToFit: false,
   scaleKeepAspect: true,
+  multiKeepAspect: true,
   multiLayoutStyle: "grid",
   masonryCols: 3,
   masonryPreset: "auto",
@@ -174,6 +198,7 @@ const I18N = {
     "tabs.resize": "Größe",
     "tabs.distribute": "Verteilen",
     "tabs.distributeScale": "Layout",
+    "tabs.presets": "Presets",
     "tabs.tools": "Tools",
     "tabs.settings": "Einst.",
 
@@ -232,6 +257,8 @@ const I18N = {
     "help.allowEmptyFrames": "Erstellt zusätzliche leere Rahmen, wenn die Summe der Min-Werte größer ist als die Auswahl.",
     "label.scaleFormatsToFit": "Formate automatisch an Seite anpassen",
     "help.scaleFormatsToFit": "Skaliert alle Multi-Formate proportional herunter, damit das größte Format in den Bereich passt.",
+    "label.multiKeepAspect": "Seitenverhältnis beibehalten",
+    "help.multiKeepAspect": "Behält das Seitenverhältnis der Formate bei, wenn sie an die Spaltenbreite angepasst werden.",
     "help.multiFormatNeedsFrame": "Multi-Format benötigt \"Rahmen\" aktiviert.",
     "label.scaleKeepAspect": "Seitenverhältnis beibehalten",
     "help.scaleKeepAspect": "Skaliert gleichmäßig (uniform), damit das ursprüngliche Seitenverhältnis der Rahmen erhalten bleibt.",
@@ -289,12 +316,48 @@ const I18N = {
     "msg.noFormatsDefined": "Keine Formate definiert. Bitte mindestens ein Format hinzufügen.",
     "msg.clipboardUnavailable": "Clipboard nicht verfügbar. Log bitte manuell kopieren.",
     "msg.panelLoaded": "Panel geladen. Aktionen werden hier geloggt.",
-    "msg.unknownError": "Unbekannter Fehler"
+    "msg.unknownError": "Unbekannter Fehler",
+
+    "title.presets": "Layout Presets",
+    "help.presets": "Wähle ein vordefiniertes Layout für deine Seite. Perfekt für Fotokalender und Fotobücher.",
+    "btn.applyPreset": "Preset anwenden",
+    "preset.heroCenter.name": "Hero Center",
+    "preset.heroCenter.desc": "1 großes Bild zentral, kleinere rundherum",
+    "preset.heroStack.name": "Hero Stack",
+    "preset.heroStack.desc": "3 Bilder vertikal in Mitte: klein-groß-klein",
+    "preset.masonry2.name": "Masonry 2 Spalten",
+    "preset.masonry2.desc": "Variable Höhen, 2 Spalten",
+    "preset.masonry3.name": "Masonry 3 Spalten",
+    "preset.masonry3.desc": "Variable Höhen, 3 Spalten",
+    "preset.grid2x2.name": "Grid 2×2",
+    "preset.grid2x2.desc": "Gleichmäßiges 2×2 Raster",
+    "preset.grid3x3.name": "Grid 3×3",
+    "preset.grid3x3.desc": "Gleichmäßiges 3×3 Raster",
+    "preset.lLayout.name": "L-Layout",
+    "preset.lLayout.desc": "Großes Bild links, Galerie rechts",
+    "preset.magazine.name": "Magazin-Stil",
+    "preset.magazine.desc": "Asymmetrisch, dynamisch",
+    "preset.collage.name": "Collage",
+    "preset.collage.desc": "Freie Anordnung, gemischte Größen",
+    "msg.presetApplied": "Preset \"{name}\" angewendet",
+    "msg.selectPreset": "Bitte ein Preset auswählen",
+
+    "title.calendar": "Kalender erstellen",
+    "help.calendar": "Erstelle automatisch ein Kalender-Grid für Wandkalender mit den Tagen des Monats.",
+    "label.calendarYear": "Jahr",
+    "label.calendarMonth": "Monat",
+    "label.calendarStartDay": "Wochenstart",
+    "help.calendarStartDay": "Erster Tag der Woche im Kalender",
+    "label.calendarCellWidth": "Zellbreite",
+    "label.calendarCellHeight": "Zellhöhe",
+    "label.calendarShowWeekNumbers": "Kalenderwochen anzeigen",
+    "btn.createCalendar": "Kalender erstellen"
   },
   en: {
     "tabs.resize": "Size",
     "tabs.distribute": "Distribute",
     "tabs.distributeScale": "Layout",
+    "tabs.presets": "Presets",
     "tabs.tools": "Tools",
     "tabs.settings": "Prefs",
 
@@ -353,6 +416,8 @@ const I18N = {
     "help.allowEmptyFrames": "Creates additional empty frames if the sum of Min values exceeds the selection.",
     "label.scaleFormatsToFit": "Auto scale formats to fit",
     "help.scaleFormatsToFit": "Scales down all multi formats proportionally so the largest format fits in the area.",
+    "label.multiKeepAspect": "Preserve aspect ratio",
+    "help.multiKeepAspect": "Preserves the aspect ratio of formats when they are adjusted to column width.",
     "help.multiFormatNeedsFrame": "Multi-format requires \"Frame\" enabled.",
     "label.scaleKeepAspect": "Preserve aspect ratio",
     "help.scaleKeepAspect": "Uniformly scales frames so their original aspect ratio is preserved.",
@@ -487,6 +552,7 @@ function applyLanguageToUI() {
     resize: "tabs.resize",
     distribute: "tabs.distribute",
     "distribute-scale": "tabs.distributeScale",
+    presets: "tabs.presets",
     tools: "tabs.tools",
     settings: "tabs.settings"
   };
@@ -512,6 +578,8 @@ function applyLanguageToUI() {
   setTextById("title-size-constraints", "title.sizeConstraints");
   setTextById("label-scale-keep-aspect", "label.scaleKeepAspect");
   setTextById("help-scale-keep-aspect", "help.scaleKeepAspect");
+  setTextById("label-multi-keep-aspect", "label.multiKeepAspect");
+  setTextById("help-multi-keep-aspect", "help.multiKeepAspect");
   setTextById("title-multi-formats", "title.multiFormats");
   setTextById("label-formats-define", "label.formatsDefine");
   setTextById("label-format-add", "label.formatAdd");
@@ -854,7 +922,12 @@ function getBoundsData(item) {
 
 function boundsToText(bounds) {
   if (!bounds) return "n/a";
-  const fmt = (n) => (typeof n === "number" ? n.toFixed(2) : "n/a");
+  const fmt = (n) => {
+    if (typeof n !== "number") return "n/a";
+    const rounded = roundToMax3Decimals(n);
+    // Zeige bis zu 3 Nachkommastellen, aber keine unnötigen Nullen
+    return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+  };
   return `x=${fmt(bounds.x)}, y=${fmt(bounds.y)}, w=${fmt(bounds.width)}, h=${fmt(bounds.height)}`;
 }
 
@@ -1079,13 +1152,15 @@ function renderFormatList() {
     if (editFormatIndex === index) itemDiv.classList.add('selected');
 
     itemDiv.addEventListener('click', () => {
+
       const w = document.getElementById('format-width');
       const h = document.getElementById('format-height');
       const minEl = document.getElementById('format-min');
       const maxEl = document.getElementById('format-max');
 
-      if (w) w.value = String(fmt.width);
-      if (h) h.value = String(fmt.height);
+      // Original-Input-String setzen, falls vorhanden, sonst wie bisher
+      if (w) w.value = typeof fmt.widthStr === 'string' ? fmt.widthStr : ((typeof fmt.width === 'string') ? fmt.width : (fmt.width ?? '').toString());
+      if (h) h.value = typeof fmt.heightStr === 'string' ? fmt.heightStr : ((typeof fmt.height === 'string') ? fmt.height : (fmt.height ?? '').toString());
       if (minEl) minEl.value = String(fmt.min ?? 0);
       if (maxEl) maxEl.value = String(fmt.max ?? 0);
 
@@ -1094,7 +1169,7 @@ function renderFormatList() {
 
     const specsSpan = document.createElement('span');
     specsSpan.className = 'format-specs';
-    specsSpan.textContent = `${fmt.width.toFixed(1)} × ${fmt.height.toFixed(1)} mm`;
+    specsSpan.textContent = `${roundToMax3Decimals(fmt.width)} × ${roundToMax3Decimals(fmt.height)} mm`;
 
     const constraintsSpan = document.createElement('span');
     constraintsSpan.className = 'format-constraints';
@@ -1127,8 +1202,14 @@ function renderFormatList() {
 }
 
 function addFormat() {
-  const width = parseFloat(document.getElementById('format-width').value);
-  const height = parseFloat(document.getElementById('format-height').value);
+  const widthInput = document.getElementById('format-width');
+  const heightInput = document.getElementById('format-height');
+  const widthStr = widthInput.value;
+  const heightStr = heightInput.value;
+  let width = parseLocalizedFloat(widthStr);
+  let height = parseLocalizedFloat(heightStr);
+  width = roundToMax3Decimals(width);
+  height = roundToMax3Decimals(height);
   const min = parseInt(document.getElementById('format-min').value) || 0;
   const max = parseInt(document.getElementById('format-max').value) || 0;
 
@@ -1148,11 +1229,11 @@ function addFormat() {
   }
 
   if (editFormatIndex !== null && definedFormats[editFormatIndex]) {
-    definedFormats[editFormatIndex] = { width, height, min, max };
+    definedFormats[editFormatIndex] = { width, height, min, max, widthStr, heightStr };
     appendLog(`Format aktualisiert: ${width}x${height}mm, Min=${min}, Max=${max}`);
     setFormatEditState(null);
   } else {
-    definedFormats.push({ width, height, min, max });
+    definedFormats.push({ width, height, min, max, widthStr, heightStr });
     appendLog(`Format hinzugefügt: ${width}x${height}mm, Min=${min}, Max=${max}`);
   }
   syncFormatsToSettings();
@@ -1190,15 +1271,7 @@ function findOptimalLayoutWithFormats(itemCount, formats, availableWidth, availa
     throw new Error(`Maximum-Beschränkungen (∑max=${totalMax}) unterschreiten Objekt-Anzahl (${itemCount})`);
   }
 
-  // Quick sanity: each format must fit at least once (1x1 grid)
-  for (const fmt of formats) {
-    const fw = Number(fmt.width) || 0;
-    const fh = Number(fmt.height) || 0;
-    if (fw <= 0 || fh <= 0) continue;
-    if (fw + spacing * 2 > availableWidth || fh + spacing * 2 > availableHeight) {
-      throw new Error(`Format ${fw}x${fh}mm passt nicht in den Bereich (${availableWidth.toFixed(2)}x${availableHeight.toFixed(2)}mm) bei spacing=${spacing}`);
-    }
-  }
+  // Note: Individual format size check removed - scoreLayout will validate if the entire grid fits
 
   // Versuche verschiedene Anordnungen und wähle beste
   let bestLayout = null;
@@ -1387,7 +1460,7 @@ async function renderTemplates() {
 
     const sizeSpan = document.createElement('span');
     sizeSpan.className = 'template-size';
-    sizeSpan.textContent = `${t.width.toFixed(1)}mm × ${t.height.toFixed(1)}mm`;
+    sizeSpan.textContent = `${roundToMax3Decimals(t.width)}mm × ${roundToMax3Decimals(t.height)}mm`;
 
     itemDiv.appendChild(nameSpan);
     itemDiv.appendChild(sizeSpan);
@@ -1430,8 +1503,10 @@ async function applyResize() {
       return;
     }
 
-    let width = parseFloat(document.getElementById('resize-width').value);
-    let height = parseFloat(document.getElementById('resize-height').value);
+    let width = parseLocalizedFloat(document.getElementById('resize-width').value);
+    let height = parseLocalizedFloat(document.getElementById('resize-height').value);
+    width = roundToMax3Decimals(width);
+    height = roundToMax3Decimals(height);
     const lockRatio = document.getElementById('lock-proportion').classList.contains('active');
 
     // Berechne Seitenverhältnis aus erstem Objekt falls nötig
@@ -1492,7 +1567,7 @@ async function applyResize() {
 
       const after = getBoundsData(item);
       const label = item && typeof item.id !== "undefined" ? `ID ${item.id}` : `Index ${i}`;
-      appendLog(`Resize -> ${label}: Start ${boundsToText(before)} | Ziel w=${width.toFixed(2)}, h=${height.toFixed(2)} | Result ${boundsToText(after)}`);
+      appendLog(`Resize -> ${label}: Start ${boundsToText(before)} | Ziel w=${roundToMax3Decimals(width)}, h=${roundToMax3Decimals(height)} | Result ${boundsToText(after)}`);
     }
 
     showMessage(t('msg.resized', { count: selection.length }));
@@ -1530,7 +1605,7 @@ async function applyDistribute() {
     }
 
     const gapInput = document.getElementById('distribute-gap');
-    const gap = gapInput ? parseFloat(gapInput.value) || 5 : 5;
+    let gap = gapInput ? roundToMax3Decimals(parseLocalizedFloat(gapInput.value) || 5) : 5;
 
     const method = getCheckedRadioValue('distribution-method', 'auto');
     const areaMode = getCheckedRadioValue('distribution-area', 'page');
@@ -1656,7 +1731,7 @@ function distributeGrid(items, pageBounds, cols, rows, horizontal, vertical, gap
       ];
 
       const after = getBoundsData(obj);
-      appendLog(`Verteilen -> ${label}: Start ${boundsToText(before)} | Ziel x=${newLeft.toFixed(2)}, y=${newTop.toFixed(2)} | Result ${boundsToText(after)}`);
+      appendLog(`Verteilen -> ${label}: Start ${boundsToText(before)} | Ziel x=${roundToMax3Decimals(newLeft)}, y=${roundToMax3Decimals(newTop)} | Result ${boundsToText(after)}`);
 
       index++;
     }
@@ -1685,11 +1760,8 @@ async function applyDistributeScale() {
 
     const overlapEl = document.getElementById('overlap-elements');
     const overlapEnabled = overlapEl ? !!overlapEl.checked : !!pluginSettings.overlapElements;
-    const spacing = overlapEnabled ? 0 : parseFloat(document.getElementById('spacing').value);
-    const minWidth = parseFloat(document.getElementById('scale-min-width').value);
-    const maxWidth = parseFloat(document.getElementById('scale-max-width').value);
-    const minHeight = parseFloat(document.getElementById('scale-min-height').value);
-    const maxHeight = parseFloat(document.getElementById('scale-max-height').value);
+    let spacing = overlapEnabled ? 0 : parseLocalizedFloat(document.getElementById('spacing').value);
+    spacing = roundToMax3Decimals(spacing);
 
     if (isNaN(spacing) || spacing < 0) {
       showMessage(t('msg.invalidSpacing'), true);
@@ -1725,8 +1797,16 @@ async function applyDistributeScale() {
     }
 
     if (items.length === 0) {
-      showMessage(t('msg.noBounds'), true);
-      return;
+      // Check if we can create empty frames from formats
+      const allowEmptyFramesEl = document.getElementById('allow-empty-frames');
+      const hasFormats = definedFormats && definedFormats.length > 0;
+
+      if (!allowEmptyFramesEl || !allowEmptyFramesEl.checked || !hasFormats) {
+        showMessage(t('msg.noBounds'), true);
+        return;
+      }
+
+      appendLog(`📭 Keine Objekte ausgewählt - erstelle ${definedFormats.reduce((sum, f) => sum + (f.min || 0), 0)} leere Rahmen aus Preset`);
     }
 
     // Bestimme Verteilungsbereich
@@ -1771,6 +1851,7 @@ async function applyDistributeScale() {
       appendLog(`❌ ${msg}`);
       return;
     }
+    if (state) state.warnedNeedsFrame = false;
 
     let cols, rows, formatAssignments;
     let formatsForLayout = null;
@@ -1781,6 +1862,24 @@ async function applyDistributeScale() {
     if (formatMode === 'multi' && definedFormats.length > 0) {
       // Multi-Format Modus
       appendLog(`Multi-Format Modus: ${definedFormats.length} Format(e) definiert`);
+
+      // Calculate minimum space requirement based on Min values
+      const totalMinRequired = definedFormats.reduce((sum, f) => sum + (parseInt(f.min, 10) || 0), 0);
+      if (totalMinRequired > 0) {
+        const minWidths = definedFormats.filter(f => (parseInt(f.min, 10) || 0) > 0).map(f => Number(f.width) || 0);
+        const minHeights = definedFormats.filter(f => (parseInt(f.min, 10) || 0) > 0).map(f => Number(f.height) || 0);
+        const avgMinWidth = minWidths.length > 0 ? (minWidths.reduce((a, b) => a + b, 0) / minWidths.length) : 0;
+        const totalMinHeight = minHeights.reduce((a, b) => a + b, 0);
+
+        const estimatedMinWidth = avgMinWidth > 0 ? avgMinWidth + spacing : 0;
+        const estimatedMinHeight = totalMinHeight + spacing * (totalMinRequired + 1);
+
+        if (estimatedMinHeight > distributionBounds.height) {
+          const msg = `Multi-Format: Mindest-Platzbedarfwarnung: ${totalMinRequired} Rahmen (\u2211Min) ben\u00f6tigen gesch\u00e4tzt ${estimatedMinHeight.toFixed(0)}mm H\u00f6he, aber nur ${distributionBounds.height.toFixed(0)}mm verf\u00fcgbar. Reduziere Min-Werte oder aktiviere "Formate an Seite anpassen".`;
+          appendLog(`\u26a0\ufe0f ${msg}`);
+          showMessage(msg, true);
+        }
+      }
 
       // Option: scale formats down to fit the area (solves oversized formats like 400x400 on A4)
       const scaleToFitEl = document.getElementById('scale-formats-to-fit');
@@ -1889,15 +1988,15 @@ async function applyDistributeScale() {
 
     // Wende Min/Max Constraints an (nur im Single-Modus)
     if (formatMode === 'single') {
-      const minWidth = parseFloat(document.getElementById('scale-min-width').value);
-      const maxWidth = parseFloat(document.getElementById('scale-max-width').value);
-      const minHeight = parseFloat(document.getElementById('scale-min-height').value);
-      const maxHeight = parseFloat(document.getElementById('scale-max-height').value);
+      let minWidthSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-min-width').value));
+      let maxWidthSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-max-width').value));
+      let minHeightSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-min-height').value));
+      let maxHeightSingle = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('scale-max-height').value));
 
-      if (!isNaN(minWidth) && defaultItemWidth < minWidth) defaultItemWidth = minWidth;
-      if (!isNaN(maxWidth) && defaultItemWidth > maxWidth) defaultItemWidth = maxWidth;
-      if (!isNaN(minHeight) && defaultItemHeight < minHeight) defaultItemHeight = minHeight;
-      if (!isNaN(maxHeight) && defaultItemHeight > maxHeight) defaultItemHeight = maxHeight;
+      if (!isNaN(minWidthSingle) && defaultItemWidth < minWidthSingle) defaultItemWidth = minWidthSingle;
+      if (!isNaN(maxWidthSingle) && defaultItemWidth > maxWidthSingle) defaultItemWidth = maxWidthSingle;
+      if (!isNaN(minHeightSingle) && defaultItemHeight < minHeightSingle) defaultItemHeight = minHeightSingle;
+      if (!isNaN(maxHeightSingle) && defaultItemHeight > maxHeightSingle) defaultItemHeight = maxHeightSingle;
     }
 
     // Verteile und skaliere Objekte (Frame + optional Inhalt)
@@ -2010,11 +2109,25 @@ async function applyDistributeScale() {
       const uniformColWidthEl = document.getElementById('masonry-uniform-col-width');
       const uniformColWidth = uniformColWidthEl ? !!uniformColWidthEl.checked : !!pluginSettings.masonryUniformColWidth;
 
+      const multiKeepAspectEl = document.getElementById('multi-keep-aspect');
+      const multiKeepAspect = multiKeepAspectEl ? !!multiKeepAspectEl.checked : (pluginSettings.multiKeepAspect !== false);
+
       // Compute column width for positioning.
-      // - uniformColWidth: columns fill the available width evenly.
-      // - otherwise: column width is based on max format width (cellW).
+      // - uniformColWidth: columns fill the available width evenly, items are scaled to fit column width.
+      // - otherwise: column width is based on max format width (cellW), items keep their format sizes.
       let masonryCols = Math.max(1, masonryColsRequested);
       let colInnerW = cellW;
+
+      // In multi-format mode, check if we should adjust column count based on format sizes
+      const maxFormatWidth = formatsForLayout && formatsForLayout.length > 0
+        ? Math.max(...formatsForLayout.map(f => Number(f.width) || 0), 0)
+        : cellW;
+
+      // For non-uniform columns, use average format width for better space utilization
+      const avgFormatWidth = formatsForLayout && formatsForLayout.length > 0
+        ? (formatsForLayout.reduce((sum, f) => sum + (Number(f.width) || 0), 0) / formatsForLayout.length)
+        : cellW;
+
       if (uniformColWidth) {
         // Reduce cols if the computed width would become too small.
         while (masonryCols > 1) {
@@ -2030,16 +2143,26 @@ async function applyDistributeScale() {
           return;
         }
       } else {
-        const colW0 = cellW + spacing;
-        const maxColsByWidth = Math.max(1, Math.floor((distributionBounds.width + spacing) / colW0));
-        masonryCols = Math.min(masonryCols, maxColsByWidth);
-        colInnerW = cellW;
+        // Non-uniform: Start with requested columns but allow dynamic expansion
+        // Columns are created on-demand as items are placed
+        // Initial estimate based on widest format, but not a hard limit
+        const colW0 = maxFormatWidth + spacing;
+        const estimatedMaxCols = Math.max(1, Math.floor((distributionBounds.width + spacing) / colW0));
+        // Don't hard-limit columns - we'll check space dynamically when placing
+        masonryCols = masonryColsRequested; // Start with user request
+        // colInnerW is not used in non-uniform mode (dynamic per column)
+        colInnerW = maxFormatWidth; // for reference only
+
+        appendLog(`Masonry (non-uniform): Start mit ${masonryCols} Spalten (geschätzt max ${estimatedMaxCols} bei max Format-Breite ${maxFormatWidth.toFixed(2)}mm), dynamische Erweiterung aktiv`);
       }
 
-      const colW = colInnerW + spacing;
+      // For uniform mode: fixed column width and positions
+      // For non-uniform mode: dynamic tracking of each column's width and x-position
+      const colW = uniformColWidth ? (colInnerW + spacing) : 0; // only used in uniform mode
       const heights = new Array(masonryCols).fill(0);
+      const colWidths = new Array(masonryCols).fill(0); // track actual max width per column (non-uniform)
 
-      appendLog(`Masonry: cols=${masonryCols}/${masonryColsRequested}, colW=${colInnerW.toFixed(2)}mm, uniformColWidth=${uniformColWidth}, seed="${masonrySeed}", fillPage=${masonryFillPage}, allowEmptyFrames=${allowEmptyFrames}`);
+      appendLog(`Masonry: cols=${masonryCols}/${masonryColsRequested}, colW=${uniformColWidth ? colInnerW.toFixed(2) + 'mm (uniform)' : 'dynamisch (non-uniform)'}, seed="${masonrySeed}", fillPage=${masonryFillPage}, allowEmptyFrames=${allowEmptyFrames}`);
 
       const pickBestCol = () => {
         let bestCol = 0;
@@ -2049,21 +2172,110 @@ async function applyDistributeScale() {
         return bestCol;
       };
 
+      // Helper: Calculate total width used by columns (for non-uniform mode)
+      const getTotalUsedWidth = () => {
+        if (uniformColWidth) return masonryCols * colW;
+        let total = spacing; // left margin
+        for (let i = 0; i < masonryCols; i++) {
+          total += colWidths[i] + spacing;
+        }
+        return total;
+      };
+
+      // Helper: Try to add a new column for non-uniform mode
+      const tryAddColumn = (itemWidth) => {
+        if (uniformColWidth) return false; // only for non-uniform
+        const currentWidth = getTotalUsedWidth();
+        const neededWidth = currentWidth + itemWidth + spacing;
+        if (neededWidth <= distributionBounds.width) {
+          heights.push(0);
+          colWidths.push(0);
+          masonryCols++;
+          return true;
+        }
+        return false;
+      };
+
       const placeMasonry = (w, h) => {
-        const bestCol = pickBestCol();
-        const cellLeft = distributionBounds.left + spacing + bestCol * colW;
-        const cellTop = distributionBounds.top + spacing + heights[bestCol];
-        const newLeft = cellLeft;
-        const newTop = cellTop;
-        const newRight = newLeft + w;
-        const newBottom = newTop + h;
+        let bestCol = pickBestCol();
+        let cellLeft, cellTop;
 
-        // keep a bottom margin = spacing
-        if (newBottom > boundsBottom - spacing) return null;
-        if (newRight > boundsRight - spacing) return null;
+        if (uniformColWidth) {
+          // Fixed column positions
+          cellLeft = distributionBounds.left + spacing + bestCol * colW;
+          cellTop = distributionBounds.top + spacing + heights[bestCol];
 
-        heights[bestCol] += (h + spacing);
-        return { newLeft, newTop };
+          // Center item within column if it's narrower than column width
+          const horizontalOffset = w < colInnerW ? (colInnerW - w) / 2 : 0;
+          const newLeft = cellLeft + horizontalOffset;
+          const newTop = cellTop;
+          const newRight = newLeft + w;
+          const newBottom = newTop + h;
+
+          // keep a bottom margin = spacing
+          if (newBottom > boundsBottom - spacing) return null;
+          if (newRight > boundsRight - spacing) return null;
+
+          heights[bestCol] += (h + spacing);
+          return { newLeft, newTop };
+        } else {
+          // Dynamic column positions based on actual placed items
+          cellTop = distributionBounds.top + spacing + heights[bestCol];
+
+          // Calculate X position: sum of all previous columns' widths plus spacing
+          cellLeft = distributionBounds.left + spacing;
+          for (let i = 0; i < bestCol; i++) {
+            cellLeft += colWidths[i] + spacing;
+          }
+
+          const newLeft = cellLeft;
+          const newTop = cellTop;
+          const newRight = newLeft + w;
+          const newBottom = newTop + h;
+
+          // Check vertical bound
+          if (newBottom > boundsBottom - spacing) {
+            // Item doesn't fit vertically in bestCol
+            // Try to add a new column if there's horizontal space
+            if (tryAddColumn(w)) {
+              bestCol = masonryCols - 1; // use the new column
+              cellTop = distributionBounds.top + spacing;
+
+              // Recalculate X for new column
+              cellLeft = distributionBounds.left + spacing;
+              for (let i = 0; i < bestCol; i++) {
+                cellLeft += colWidths[i] + spacing;
+              }
+
+              const newLeft2 = cellLeft;
+              const newTop2 = cellTop;
+              const newRight2 = newLeft2 + w;
+              const newBottom2 = newTop2 + h;
+
+              if (newRight2 > boundsRight - spacing || newBottom2 > boundsBottom - spacing) {
+                return null; // Still doesn't fit
+              }
+
+              heights[bestCol] = h + spacing;
+              colWidths[bestCol] = w;
+              return { newLeft: newLeft2, newTop: newTop2 };
+            }
+            return null;
+          }
+
+          // Check horizontal bound
+          if (newRight > boundsRight - spacing) return null;
+
+          // Update column height
+          heights[bestCol] += (h + spacing);
+
+          // Update column width to the maximum item width in this column
+          if (w > colWidths[bestCol]) {
+            colWidths[bestCol] = w;
+          }
+
+          return { newLeft, newTop };
+        }
       };
 
       const counts = new Map();
@@ -2123,7 +2335,8 @@ async function applyDistributeScale() {
             item = { object: obj, width: 0, height: 0, bounds: obj.geometricBounds };
             items[index] = item;
           } else {
-            break;
+            index++;
+            continue;
           }
         }
 
@@ -2135,13 +2348,22 @@ async function applyDistributeScale() {
           const baseW = Number(formatAssignments[index].width) || 0;
           const baseH = Number(formatAssignments[index].height) || 0;
           if (uniformColWidth && baseW > 0 && baseH > 0) {
-            itemWidth = colInnerW;
-            itemHeight = baseH * (colInnerW / baseW);
-            appendLog(`  -> Format: ${baseW}x${baseH}mm -> ${itemWidth.toFixed(2)}x${itemHeight.toFixed(2)}mm (uniform)`);
+            // Scale to fit column width, but only if format is wider than column
+            // This preserves smaller formats while fitting larger ones
+            if (baseW > colInnerW) {
+              itemWidth = colInnerW;
+              // multiKeepAspect: preserve aspect ratio when scaling
+              itemHeight = multiKeepAspect ? (baseH * (colInnerW / baseW)) : baseH;
+              appendLog(`  -> Format: ${baseW.toFixed(2)}x${baseH.toFixed(2)}mm -> ${itemWidth.toFixed(2)}x${itemHeight.toFixed(2)}mm (scaled to fit${multiKeepAspect ? ', aspect preserved' : ''})`);
+            } else {
+              itemWidth = baseW;
+              itemHeight = baseH;
+              appendLog(`  -> Format: ${itemWidth.toFixed(2)}x${itemHeight.toFixed(2)}mm (original size)`);
+            }
           } else {
             itemWidth = baseW;
             itemHeight = baseH;
-            appendLog(`  -> Format: ${itemWidth}x${itemHeight}mm`);
+            appendLog(`  -> Format: ${itemWidth.toFixed(2)}x${itemHeight.toFixed(2)}mm`);
           }
         } else {
           itemWidth = uniformColWidth ? colInnerW : defaultItemWidth;
@@ -2149,7 +2371,11 @@ async function applyDistributeScale() {
         }
 
         const pos = placeMasonry(itemWidth, itemHeight);
-        if (!pos) break;
+        if (!pos) {
+          appendLog(`  -> Item ${label} passt nicht mehr in den Bereich (übersprungen)`);
+          index++;
+          continue;
+        }
 
         resizeItem(obj, itemWidth, itemHeight, {
           scaleFrame,
@@ -2191,7 +2417,8 @@ async function applyDistributeScale() {
               item = { object: obj, width: 0, height: 0, bounds: obj.geometricBounds };
               items[index] = item;
             } else {
-              break;
+              index++;
+              continue;
             }
           }
 
@@ -2321,8 +2548,8 @@ function canLivePreviewResize() {
   const lockBtn = document.getElementById('lock-proportion');
   const lockRatio = !!(lockBtn && lockBtn.classList.contains('active'));
 
-  const width = widthEl ? parseFloat(widthEl.value) : NaN;
-  const height = heightEl ? parseFloat(heightEl.value) : NaN;
+  const width = widthEl ? parseLocalizedFloat(widthEl.value) : NaN;
+  const height = heightEl ? parseLocalizedFloat(heightEl.value) : NaN;
 
   if (lockRatio) {
     const hasOneSide = (Number.isFinite(width) && width >= MIN_DIMENSION) || (Number.isFinite(height) && height >= MIN_DIMENSION);
@@ -2342,7 +2569,7 @@ function canLivePreviewDistribute() {
   if (gapEl) {
     const raw = String(gapEl.value || '').trim();
     if (raw) {
-      const gap = parseFloat(raw);
+      const gap = parseLocalizedFloat(raw);
       if (!Number.isFinite(gap) || gap < 0) return false;
     }
   }
@@ -2376,7 +2603,7 @@ function canLivePreviewDistributeScale(state) {
   if (!overlapEnabled) {
     const spacingEl = document.getElementById('spacing');
     const spacingRaw = spacingEl ? String(spacingEl.value || '').trim() : '';
-    spacing = parseFloat(spacingRaw);
+    spacing = parseLocalizedFloat(spacingRaw);
     if (!Number.isFinite(spacing) || spacing < 0) return false;
   }
 
@@ -2415,6 +2642,212 @@ function canLivePreviewDistributeScale(state) {
 
 function canLivePreviewCenterContent() {
   return hasActiveSelection();
+}
+
+// ============================
+// Calendar Generation
+// ============================
+
+async function createCalendar() {
+  try {
+    const doc = getActiveDocumentSafe();
+
+    if (!doc) {
+      showMessage('Kein aktives Dokument', true);
+      return;
+    }
+
+    // Check if document has pages
+    appendLog(`Dokument hat ${doc.pages ? doc.pages.length : 0} Seite(n)`);
+
+    if (!doc.pages || doc.pages.length === 0) {
+      showMessage('Dokument hat keine Seiten', true);
+      return;
+    }
+
+    // Get calendar parameters
+    const year = parseInt(document.getElementById('calendar-year').value, 10);
+    const month = parseInt(document.getElementById('calendar-month').value, 10);
+    const layout = document.getElementById('calendar-layout').value;
+    const startDay = parseInt(document.getElementById('calendar-start-day').value, 10);
+    let cellWidth = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-cell-width').value)) || 50;
+    let cellHeight = roundToMax3Decimals(parseLocalizedFloat(document.getElementById('calendar-cell-height').value)) || 40;
+    const showWeekNumbers = document.getElementById('calendar-show-week-numbers').checked;
+
+    appendLog(`📅 Erstelle Kalender: ${month}/${year}, Layout: ${layout}`);
+
+    // Get first page - try multiple methods
+    let page = null;
+
+    // Method 1: Direct array access
+    if (doc.pages.length > 0) {
+      page = doc.pages.item(0);
+    }
+
+    // Method 2: Iterate
+    if (!page && doc.pages.length > 0) {
+      for (let i = 0; i < doc.pages.length; i++) {
+        page = doc.pages[i];
+        if (page) break;
+      }
+    }
+
+    if (!page) {
+      showMessage('Konnte keine Seite im Dokument finden', true);
+      appendLog(`❌ Page ist null/undefined, doc.pages.length=${doc.pages.length}`);
+      return;
+    }
+
+    appendLog(`Seite gefunden: ${page.name || 'unbenannt'}`);
+
+    const bounds = page.bounds;
+    if (!bounds || bounds.length < 4) {
+      showMessage('Konnte Seitengrenzen nicht lesen', true);
+      appendLog(`❌ Bounds ungültig: ${JSON.stringify(bounds)}`);
+      return;
+    }
+
+    // Calculate page dimensions [top, left, bottom, right]
+    const pageWidth = Math.abs(bounds[3] - bounds[1]);
+    const pageHeight = Math.abs(bounds[2] - bounds[0]);
+    const pageTop = bounds[0];
+    const pageLeft = bounds[1];
+
+    appendLog(`Seite: ${pageWidth.toFixed(3)}×${pageHeight.toFixed(3)}mm`);
+
+    // Weekday names
+    const weekdaysSunday = ['S', 'M', 'D', 'M', 'D', 'F', 'S']; // Sun-Sat
+    const weekdaysMonday = ['M', 'D', 'M', 'D', 'F', 'S', 'S']; // Mon-Sun
+
+    // Calculate days in month
+    const date = new Date(year, month - 1, 1);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const firstDay = date.getDay(); // 0=Sunday, 6=Saturday
+
+    // Determine layout configuration
+    let cols, rows, adjustedFirstDay = 0;
+
+    switch (layout) {
+      case 'single-row':
+        cols = daysInMonth;
+        rows = 1;
+        cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5)); // Auto-fit to page width
+        appendLog(`Single-Row: ${cols} Zellen, Breite: ${cellWidth.toFixed(3)}mm`);
+        break;
+
+      case 'single-column':
+        cols = 1;
+        rows = daysInMonth;
+        cellHeight = Math.min(cellHeight, pageHeight / (rows + 0.5)); // Auto-fit to page height
+        appendLog(`Single-Column: ${rows} Zellen, Höhe: ${cellHeight.toFixed(3)}mm`);
+        break;
+
+      case 'two-rows':
+        cols = Math.ceil(daysInMonth / 2);
+        rows = 2;
+        cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5));
+        appendLog(`Zwei Zeilen: ${cols}×2, Breite: ${cellWidth.toFixed(3)}mm`);
+        break;
+
+      case 'three-rows':
+        cols = Math.ceil(daysInMonth / 3);
+        rows = 3;
+        cellWidth = Math.min(cellWidth, pageWidth / (cols + 0.5));
+        appendLog(`Drei Zeilen: ${cols}×3, Breite: ${cellWidth.toFixed(3)}mm`);
+        break;
+
+      case 'grid':
+      default:
+        // Adjust first day based on week start preference
+        adjustedFirstDay = firstDay;
+        if (startDay === 1) { // Monday start
+          adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+        }
+        cols = 7; // Always 7 columns for days of week
+        rows = Math.ceil((adjustedFirstDay + daysInMonth) / cols);
+        appendLog(`Grid-Layout: 7×${rows}, Offset: ${adjustedFirstDay}`);
+        break;
+    }
+
+    // Select weekdays array based on start day (only for grid layout)
+    const weekdays = startDay === 1 ? weekdaysMonday : weekdaysSunday;
+    const headerHeight = layout === 'grid' ? cellHeight * 0.6 : 0; // Header only for grid layout
+    const calendarWidth = cols * cellWidth;
+    const calendarHeight = headerHeight + rows * cellHeight;
+
+    // Center calendar on page
+    const startX = pageLeft + (pageWidth - calendarWidth) / 2;
+    const startY = pageTop + (pageHeight - calendarHeight) / 2;
+
+    appendLog(`Kalender-Grid: ${cols}×${rows} = ${daysInMonth} Tage`);
+
+    // Create weekday header row (only for grid layout)
+    if (layout === 'grid') {
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * cellWidth;
+        const y = startY;
+
+        const headerFrame = page.textFrames.add();
+        headerFrame.geometricBounds = [y, x, y + headerHeight, x + cellWidth];
+        headerFrame.contents = weekdays[col];
+
+        // Add border
+        headerFrame.strokeWeight = 0.5;
+        try {
+          const blackSwatch = doc.swatches.itemByName('Black');
+          if (blackSwatch && blackSwatch.isValid) {
+            headerFrame.strokeColor = blackSwatch;
+          }
+        } catch (e) {
+          // Black swatch not found - skip stroke color
+        }
+      }
+    }
+
+    // Create frames for each day (offset by header height)
+    let day = 1;
+    let createdFrames = 0;
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        // Skip cells before first day (only for grid layout)
+        if (layout === 'grid' && row === 0 && col < adjustedFirstDay) continue;
+        // Stop after last day
+        if (day > daysInMonth) break;
+
+        const x = startX + col * cellWidth;
+        const y = startY + headerHeight + row * cellHeight;
+
+        // Create text frame with proper bounds [top, left, bottom, right]
+        const frame = page.textFrames.add();
+        frame.geometricBounds = [y, x, y + cellHeight, x + cellWidth];
+
+        // Add day number (formatting in InDesign UXP is limited, keep it simple)
+        frame.contents = String(day);
+
+        // Add border
+        frame.strokeWeight = 0.5;
+        try {
+          const blackSwatch = doc.swatches.itemByName('Black');
+          if (blackSwatch && blackSwatch.isValid) {
+            frame.strokeColor = blackSwatch;
+          }
+        } catch (e) {
+          // Black swatch not found - skip stroke color
+        }
+
+        createdFrames++;
+        day++;
+      }
+    }
+
+    appendLog(`✅ ${createdFrames} Kalender-Zellen erstellt`);
+    showMessage(`Kalender erstellt: ${createdFrames} Tage`);
+
+  } catch (error) {
+    showMessage(`Fehler beim Erstellen des Kalenders: ${formatErrorMessage(error)}`, true);
+    console.error(error);
+  }
 }
 
 async function applyCenterContent() {
@@ -2511,7 +2944,7 @@ async function applyFitToFrame() {
               // True stretch: width AND height independently (distorts)
               scaleX = (frameWidth / gw) * 100;
               scaleY = (frameHeight / gh) * 100;
-              appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(1)}%, scaleY=${scaleY.toFixed(1)}%`);
+              appendLog(`  -> Stretch (verzerrt): scaleX=${scaleX.toFixed(3)}%, scaleY=${scaleY.toFixed(3)}%`);
             } else if (mode === 'fill') {
               // Fill: choose bigger factor so content covers the frame
               const scaleToFitWidth = (frameWidth / gw) * 100;
@@ -2522,13 +2955,13 @@ async function applyFitToFrame() {
                 scaleX = s;
                 scaleY = s;
                 const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                appendLog(`  -> Fill (horz) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% > ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+                appendLog(`  -> Fill (horz) ${label}: Frame ${roundToMax3Decimals(frameWidth)}x${roundToMax3Decimals(frameHeight)}mm, Content ${roundToMax3Decimals(gw)}x${roundToMax3Decimals(gh)}mm, ScaleW=${roundToMax3Decimals(scaleToFitWidth)}% > ScaleH=${roundToMax3Decimals(scaleToFitHeight)}%, Gewählt=${roundToMax3Decimals(s)}%`);
               } else {
                 const s = scaleToFitHeight;
                 scaleX = s;
                 scaleY = s;
                 const label = frame.id ? `ID ${frame.id}` : `Index ${i}`;
-                appendLog(`  -> Fill (vert) ${label}: Frame ${frameWidth.toFixed(1)}x${frameHeight.toFixed(1)}mm, Content ${gw.toFixed(1)}x${gh.toFixed(1)}mm, ScaleW=${scaleToFitWidth.toFixed(1)}% < ScaleH=${scaleToFitHeight.toFixed(1)}%, Gewählt=${s.toFixed(1)}%`);
+                appendLog(`  -> Fill (vert) ${label}: Frame ${roundToMax3Decimals(frameWidth)}x${roundToMax3Decimals(frameHeight)}mm, Content ${roundToMax3Decimals(gw)}x${roundToMax3Decimals(gh)}mm, ScaleW=${roundToMax3Decimals(scaleToFitWidth)}% < ScaleH=${roundToMax3Decimals(scaleToFitHeight)}%, Gewählt=${roundToMax3Decimals(s)}%`);
               }
             } else if (mode === 'fit-vert') {
               const s = (frameHeight / gh) * 100;
@@ -2606,6 +3039,7 @@ const livePreviewRegistry = {
       'scale-keep-aspect',
       'allow-empty-frames',
       'scale-formats-to-fit',
+      'multi-keep-aspect',
       'multi-layout-style',
       'masonry-preset', 'masonry-cols',
       'masonry-count-mode', 'masonry-target-count',
@@ -2628,6 +3062,20 @@ const livePreviewRegistry = {
     canRun: () => canLivePreviewCenterContent(),
     watchIds: [],
     watchNames: []
+  },
+  preset: {
+    checkboxId: 'preview-preset',
+    debounceMs: 500,
+    apply: async () => {
+      if (selectedPreset) {
+        applyLayoutPreset(selectedPreset);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await applyDistributeScale();
+      }
+    },
+    canRun: () => selectedPreset !== null && hasActiveSelection(),
+    watchIds: [],
+    watchNames: []
   }
 };
 
@@ -2636,7 +3084,8 @@ const livePreviewState = {
   distribute: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] },
   distributeScale: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [], warnedNoFormats: false, warnedNeedsFrame: false },
   fitToFrame: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] },
-  centerContent: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] }
+  centerContent: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] },
+  preset: { enabled: false, applied: false, running: false, pending: false, cancelRequested: false, schedule: null, snapshot: null, createdObjects: [] }
 };
 
 function capturePreviewSnapshot() {
@@ -2893,6 +3342,294 @@ function initLivePreviewWiring() {
   Object.keys(livePreviewRegistry).forEach(wire);
 }
 
+// ============================
+// Preset Definitions & Application
+// ============================
+
+// Preset definitions with relative sizes (percentages of page dimensions)
+// Format: { widthPct, heightPct, min, max } where widthPct/heightPct are 0-100
+const layoutPresets = {
+  'hero-center': {
+    formats: [
+      { widthPct: 20, heightPct: 30, min: 1, max: 1 },  // Left top: small
+      { widthPct: 35, heightPct: 20, min: 1, max: 1 },  // Center top: spacer (increased from 15%)
+      { widthPct: 20, heightPct: 30, min: 1, max: 1 },  // Right top: small
+      { widthPct: 35, heightPct: 50, min: 1, max: 1 },  // Center: Hero (reduced from 55%)
+      { widthPct: 20, heightPct: 30, min: 3, max: 0 }   // Remaining: fill left+right columns
+    ],
+    mode: 'multi',
+    layoutStyle: 'masonry',
+    masonryPreset: 'cols-3',
+    uniformColWidth: false,
+    spacing: 5,
+    scaleFormatsToFit: true,
+    allowEmptyFrames: true
+  },
+  'masonry-2col': {
+    formats: [
+      { widthPct: 45, heightPct: 34, min: 0, max: 0 },  // Increased from 30% for proper 2-col layout
+      { widthPct: 45, heightPct: 40, min: 0, max: 0 }
+    ],
+    mode: 'multi',
+    layoutStyle: 'masonry',
+    masonryPreset: 'cols-2',
+    uniformColWidth: false,
+    spacing: 5
+  },
+  'masonry-3col': {
+    formats: [
+      { widthPct: 30, heightPct: 27, min: 0, max: 0 },  // Increased from 24% for proper 3-col layout
+      { widthPct: 30, heightPct: 40, min: 0, max: 0 },
+      { widthPct: 30, heightPct: 34, min: 0, max: 0 }
+    ],
+    mode: 'multi',
+    layoutStyle: 'masonry',
+    masonryPreset: 'cols-3',
+    uniformColWidth: false,
+    spacing: 5
+  },
+  'grid-2x2': {
+    formats: [],
+    mode: 'single',
+    layoutStyle: 'grid',
+    spacing: 5
+  },
+  'grid-3x3': {
+    formats: [],
+    mode: 'single',
+    layoutStyle: 'grid',
+    spacing: 5
+  },
+  'l-layout': {
+    formats: [
+      { widthPct: 45, heightPct: 67, min: 1, max: 1 },  // Large left
+      { widthPct: 20, heightPct: 24, min: 3, max: 0 }   // Small right
+    ],
+    mode: 'multi',
+    layoutStyle: 'grid',
+    spacing: 5,
+    scaleFormatsToFit: true
+  },
+  'magazine': {
+    formats: [
+      { widthPct: 40, heightPct: 40, min: 1, max: 1 },
+      { widthPct: 20, heightPct: 24, min: 2, max: 0 },
+      { widthPct: 20, heightPct: 60, min: 1, max: 1 }
+    ],
+    mode: 'multi',
+    layoutStyle: 'grid',
+    spacing: 5,
+    scaleFormatsToFit: true
+  },
+  'hero-stack': {
+    formats: [
+      { widthPct: 20, heightPct: 28, min: 2, max: 2 },  // Left: 2 small
+      { widthPct: 35, heightPct: 15, min: 1, max: 1 },  // Center top: spacer (increased from 12%)
+      { widthPct: 20, heightPct: 28, min: 2, max: 2 },  // Right: 2 small
+      { widthPct: 35, heightPct: 42, min: 1, max: 1 },  // Center: Hero (reduced from 45%)
+      { widthPct: 35, heightPct: 15, min: 1, max: 1 },  // Center bottom: spacer (increased from 12%)
+      { widthPct: 20, heightPct: 28, min: 0, max: 0 }   // Additional small for sides
+    ],
+    mode: 'multi',
+    layoutStyle: 'masonry',
+    masonryPreset: 'cols-3',
+    uniformColWidth: false,
+    spacing: 5,
+    scaleFormatsToFit: true,
+    allowEmptyFrames: true
+  },
+  'collage': {
+    formats: [
+      { widthPct: 30, heightPct: 34, min: 0, max: 0 },
+      { widthPct: 20, heightPct: 34, min: 0, max: 0 },
+      { widthPct: 25, heightPct: 40, min: 0, max: 0 },
+      { widthPct: 25, heightPct: 27, min: 0, max: 0 }
+    ],
+    mode: 'multi',
+    layoutStyle: 'masonry',
+    masonryPreset: 'auto',
+    uniformColWidth: false,
+    spacing: 5
+  }
+};
+
+// Convert relative preset formats to absolute sizes based on page dimensions
+function calculateAbsoluteFormats(formats, pageWidth, pageHeight) {
+  if (!formats || formats.length === 0) return [];
+
+  return formats.map(f => {
+    // If format uses percentage values, convert to mm
+    if (f.widthPct !== undefined && f.heightPct !== undefined) {
+      return {
+        width: (pageWidth * f.widthPct / 100),
+        height: (pageHeight * f.heightPct / 100),
+        min: f.min,
+        max: f.max
+      };
+    }
+    // Otherwise return as-is (backwards compatibility)
+    return { ...f };
+  });
+}
+
+let selectedPreset = null;
+
+// UI Update Functions (müssen vor applyLayoutPreset definiert sein)
+function updateFormatModeUI() {
+  const singleFormatEl = document.getElementById('single-format-settings');
+  const multiFormatEl = document.getElementById('multi-format-settings');
+  const multiNeedsFrameHintEl = document.getElementById('help-multi-format-needs-frame');
+  const scaleFrameEl = document.getElementById('scale-frame');
+
+  const mode = getCheckedRadioValue('format-mode', 'single');
+  setVisible(singleFormatEl, mode === 'single', 'block');
+  setVisible(multiFormatEl, mode === 'multi', 'block');
+
+  if (multiNeedsFrameHintEl) {
+    const scaleFrameChecked = !!(scaleFrameEl && scaleFrameEl.checked);
+    setVisible(multiNeedsFrameHintEl, mode === 'multi' && !scaleFrameChecked, 'block');
+  }
+
+  appendLog(`UI: format-settings mode=${mode}`);
+}
+
+function updateMultiLayoutStyleUI() {
+  const masonrySettingsEl = document.getElementById('masonry-settings');
+  const multiLayoutStyle = pluginSettings.multiLayoutStyle || 'grid';
+  setVisible(masonrySettingsEl, multiLayoutStyle === 'masonry', 'block');
+}
+
+function updateMasonryPresetUI() {
+  const selectMasonryPreset = document.getElementById('masonry-preset');
+  const inputMasonryCols = document.getElementById('masonry-cols');
+  const preset = selectMasonryPreset ? String(selectMasonryPreset.value || 'custom') : String(pluginSettings.masonryPreset || 'custom');
+  pluginSettings.masonryPreset = preset;
+
+  const isCustom = preset === 'custom';
+  if (inputMasonryCols) {
+    inputMasonryCols.disabled = !isCustom;
+    if (!isCustom && /^cols-\d+$/.test(preset)) {
+      const n = parseInt(preset.replace('cols-', ''), 10);
+      if (Number.isFinite(n) && n > 0) inputMasonryCols.value = String(n);
+    }
+  }
+
+  if (settingsReady) queueSaveSettings();
+  try { requestLivePreview('distributeScale'); } catch (_) { }
+}
+
+function applyLayoutPreset(presetKey) {
+  const preset = layoutPresets[presetKey];
+  if (!preset) {
+    showMessage(t('msg.selectPreset'), true);
+    return;
+  }
+
+  try {
+    // Get current page size to calculate absolute formats
+    let pageWidth = 420;  // Default A4 landscape width
+    let pageHeight = 297; // Default A4 landscape height
+
+    try {
+      const { app } = require('indesign');
+      const doc = app.activeDocument;
+      if (doc && doc.pages.length > 0) {
+        const page = doc.pages[0];
+        const bounds = page.bounds;
+        pageWidth = Math.abs(bounds[3] - bounds[1]);
+        pageHeight = Math.abs(bounds[2] - bounds[0]);
+      }
+    } catch (e) {
+      console.warn('Could not get page size, using defaults:', e);
+    }
+
+    // Apply formats (convert relative to absolute sizes)
+    if (preset.formats && preset.formats.length > 0) {
+      definedFormats = calculateAbsoluteFormats(preset.formats, pageWidth, pageHeight);
+      pluginSettings.formats = definedFormats;
+      renderFormatList();
+    }
+
+    // Set format mode
+    const modeRadio = document.getElementById(`format-mode-${preset.mode}`);
+    if (modeRadio) {
+      modeRadio.checked = true;
+      updateFormatModeUI();
+    }
+
+    // Set layout style
+    const layoutStyleEl = document.getElementById('multi-layout-style');
+    if (layoutStyleEl && preset.layoutStyle) {
+      layoutStyleEl.value = preset.layoutStyle;
+      pluginSettings.multiLayoutStyle = preset.layoutStyle;
+      updateMultiLayoutStyleUI();
+    }
+
+    // Set masonry preset
+    if (preset.masonryPreset) {
+      const masonryPresetEl = document.getElementById('masonry-preset');
+      if (masonryPresetEl) {
+        masonryPresetEl.value = preset.masonryPreset;
+        pluginSettings.masonryPreset = preset.masonryPreset;
+        updateMasonryPresetUI();
+      }
+    }
+
+    // Set uniform column width
+    if (preset.uniformColWidth !== undefined) {
+      const uniformEl = document.getElementById('masonry-uniform-col-width');
+      if (uniformEl) {
+        uniformEl.checked = preset.uniformColWidth;
+        pluginSettings.masonryUniformColWidth = preset.uniformColWidth;
+      }
+    }
+
+    // Set spacing
+    if (preset.spacing !== undefined) {
+      const spacingEl = document.getElementById('spacing');
+      if (spacingEl) {
+        spacingEl.value = String(preset.spacing);
+        pluginSettings.spacing = preset.spacing;
+      }
+    }
+
+    // Set scaleFormatsToFit if specified in preset
+    if (preset.scaleFormatsToFit !== undefined) {
+      const scaleFormatsEl = document.getElementById('scale-formats-to-fit');
+      if (scaleFormatsEl) {
+        scaleFormatsEl.checked = preset.scaleFormatsToFit;
+        pluginSettings.scaleFormatsToFit = preset.scaleFormatsToFit;
+      }
+    }
+
+    // Set allowEmptyFrames if specified in preset
+    if (preset.allowEmptyFrames !== undefined) {
+      const allowEmptyEl = document.getElementById('allow-empty-frames');
+      if (allowEmptyEl) {
+        allowEmptyEl.checked = preset.allowEmptyFrames;
+        pluginSettings.allowEmptyFrames = preset.allowEmptyFrames;
+      }
+    }
+
+    queueSaveSettings();
+
+    // Convert preset key to translation key
+    // hero-center → heroCenter, masonry-2col → masonry2, masonry-3col → masonry3
+    let translationKey = presetKey;
+    if (presetKey === 'masonry-2col') translationKey = 'masonry2';
+    else if (presetKey === 'masonry-3col') translationKey = 'masonry3';
+    else translationKey = presetKey.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+    const presetName = t(`preset.${translationKey}.name`) || presetKey;
+    appendLog(`✨ Preset "${presetName}" angewendet`);
+    showMessage(t('msg.presetApplied', { name: presetName }));
+
+  } catch (error) {
+    showMessage(t('msg.errorWithMessage', { message: formatErrorMessage(error) }), true);
+    console.error(error);
+  }
+}
+
 function initPanel() {
   // Catch runtime errors and surface them into the log when possible.
   try {
@@ -2954,6 +3691,28 @@ function initPanel() {
     if (String(logEl.textContent || '').trim() === 'Log bereit…') logEl.textContent = '';
   }
 
+  // Track selection changes and log object count
+  let lastSelectionCount = -1;
+  const checkSelection = () => {
+    try {
+      const { app } = require('indesign');
+      if (app && app.activeDocument && app.activeDocument.selection) {
+        const count = app.activeDocument.selection.length;
+        if (count !== lastSelectionCount) {
+          lastSelectionCount = count;
+          appendLog(`📋 Auswahl: ${count} Objekt(e)`);
+        }
+      }
+    } catch (e) {
+      // Ignore - no document open or other error
+    }
+  };
+
+  // Poll every 500ms for selection changes
+  setInterval(checkSelection, 500);
+  // Initial check
+  setTimeout(checkSelection, 100);
+
   const gridSettingsEl = document.getElementById('grid-settings');
   const singleFormatEl = document.getElementById('single-format-settings');
   const multiFormatEl = document.getElementById('multi-format-settings');
@@ -3010,6 +3769,7 @@ function initPanel() {
           if (targetTab === 'resize') requestLivePreview('resize');
           else if (targetTab === 'distribute') requestLivePreview('distribute');
           else if (targetTab === 'distribute-scale') requestLivePreview('distributeScale');
+          else if (targetTab === 'presets') requestLivePreview('preset');
           else if (targetTab === 'tools') {
             requestLivePreview('fitToFrame');
             requestLivePreview('centerContent');
@@ -3145,6 +3905,7 @@ function initPanel() {
   const selectLanguage = document.getElementById('setting-language');
   const toggleAllowEmptyFrames = document.getElementById('allow-empty-frames');
   const toggleKeepAspect = document.getElementById('scale-keep-aspect');
+  const toggleMultiKeepAspect = document.getElementById('multi-keep-aspect');
   const toggleScaleFormatsToFit = document.getElementById('scale-formats-to-fit');
   const selectMultiLayoutStyle = document.getElementById('multi-layout-style');
   const masonrySettingsEl = document.getElementById('masonry-settings');
@@ -3325,10 +4086,10 @@ function initPanel() {
   };
 
   const applySettings = () => {
-    const font = parseFloat(inputFont.value) || 11;
-    const gap = parseFloat(inputGap.value) || 8;
-    const pad = parseFloat(inputPad.value) || 12;
-    const divider = parseFloat(inputDivider.value) || 16;
+    const font = roundToMax3Decimals(parseLocalizedFloat(inputFont.value)) || 11;
+    const gap = roundToMax3Decimals(parseLocalizedFloat(inputGap.value)) || 8;
+    const pad = roundToMax3Decimals(parseLocalizedFloat(inputPad.value)) || 12;
+    const divider = roundToMax3Decimals(parseLocalizedFloat(inputDivider.value)) || 16;
 
     pluginSettings.ui = {
       font,
@@ -3387,6 +4148,14 @@ function initPanel() {
     toggleScaleFormatsToFit.addEventListener('change', () => {
       pluginSettings.scaleFormatsToFit = !!toggleScaleFormatsToFit.checked;
       appendLog(`UI: scaleFormatsToFit=${!!pluginSettings.scaleFormatsToFit}`);
+      if (settingsReady) queueSaveSettings();
+    });
+  }
+
+  if (toggleMultiKeepAspect) {
+    toggleMultiKeepAspect.addEventListener('change', () => {
+      pluginSettings.multiKeepAspect = !!toggleMultiKeepAspect.checked;
+      appendLog(`UI: multiKeepAspect=${!!pluginSettings.multiKeepAspect}`);
       if (settingsReady) queueSaveSettings();
     });
   }
@@ -3453,8 +4222,8 @@ function initPanel() {
 
   document.getElementById('save-template-btn').addEventListener('click', async () => {
     const name = document.getElementById('template-name').value.trim();
-    const width = parseFloat(document.getElementById('resize-width').value);
-    const height = parseFloat(document.getElementById('resize-height').value);
+    const width = parseLocalizedFloat(document.getElementById('resize-width').value);
+    const height = parseLocalizedFloat(document.getElementById('resize-height').value);
 
     if (!name) {
       showMessage(t('msg.templateNameRequired'), true);
@@ -3521,6 +4290,12 @@ function initPanel() {
     scaleToFrameBtn.addEventListener('click', () => { void applyWithLivePreviewCommit('fitToFrame', applyFitToFrame); });
   }
 
+  // Calendar Tab Button
+  const createCalendarBtn = document.getElementById('btn-create-calendar');
+  if (createCalendarBtn) {
+    createCalendarBtn.addEventListener('click', createCalendar);
+  }
+
   // Live preview wiring (checkboxes + debounced change listeners)
   initLivePreviewWiring();
 
@@ -3539,6 +4314,7 @@ function initPanel() {
     if (togglePopups) togglePopups.checked = !!pluginSettings.popupsEnabled;
     if (toggleAllowEmptyFrames) toggleAllowEmptyFrames.checked = !!pluginSettings.allowEmptyFrames;
     if (toggleKeepAspect) toggleKeepAspect.checked = (pluginSettings.scaleKeepAspect !== false);
+    if (toggleMultiKeepAspect) toggleMultiKeepAspect.checked = (pluginSettings.multiKeepAspect !== false);
     if (toggleScaleFormatsToFit) toggleScaleFormatsToFit.checked = !!pluginSettings.scaleFormatsToFit;
     if (selectMultiLayoutStyle) selectMultiLayoutStyle.value = pluginSettings.multiLayoutStyle || 'grid';
     if (inputMasonryCols) inputMasonryCols.value = String(pluginSettings.masonryCols ?? 3);
@@ -3554,6 +4330,62 @@ function initPanel() {
     }
     setVisible(masonrySettingsEl, (pluginSettings.multiLayoutStyle || 'grid') === 'masonry', 'block');
     if (selectLanguage) selectLanguage.value = getLanguage();
+
+    // Initialize preset cards
+    const presetCards = document.querySelectorAll('.preset-card');
+    presetCards.forEach(card => {
+      const presetKey = card.getAttribute('data-preset');
+
+      // Translate preset names and descriptions
+      const nameEl = card.querySelector('.preset-name');
+      const descEl = card.querySelector('.preset-desc');
+      if (nameEl && presetKey) {
+        const camelKey = presetKey.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        nameEl.textContent = t(`preset.${camelKey}.name`) || nameEl.textContent;
+      }
+      if (descEl && presetKey) {
+        const camelKey = presetKey.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        descEl.textContent = t(`preset.${camelKey}.desc`) || descEl.textContent;
+      }
+
+      card.addEventListener('click', () => {
+        presetCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedPreset = presetKey;
+        try { requestLivePreview('preset'); } catch (_) { }
+      });
+    });
+
+    const transferPresetBtn = document.getElementById('transfer-preset-btn');
+    if (transferPresetBtn) {
+      transferPresetBtn.textContent = t('btn.transferPreset') || 'In Layout-Tab übernehmen';
+      transferPresetBtn.addEventListener('click', () => {
+        if (selectedPreset) {
+          applyLayoutPreset(selectedPreset);
+          // Switch to Layout tab
+          const layoutTab = document.querySelector('[data-tab="distribute-scale"]');
+          if (layoutTab) layoutTab.click();
+        } else {
+          showMessage(t('msg.selectPreset'), true);
+        }
+      });
+    }
+
+    const applyPresetBtn = document.getElementById('apply-preset-btn');
+    if (applyPresetBtn) {
+      applyPresetBtn.textContent = t('btn.applyPreset');
+      applyPresetBtn.addEventListener('click', async () => {
+        if (selectedPreset) {
+          applyLayoutPreset(selectedPreset);
+          // Wait a moment for UI to update, then apply distribute & scale
+          setTimeout(() => {
+            void applyWithLivePreviewCommit('distributeScale', applyDistributeScale);
+          }, 100);
+        } else {
+          showMessage(t('msg.selectPreset'), true);
+        }
+      });
+    }
 
     if (pluginSettings.ui) {
       if (inputFont) inputFont.value = String(pluginSettings.ui.font ?? 11);
