@@ -93,11 +93,15 @@
       display: inline-block;
       margin-right: 6px;
       line-height: 1;
+      pointer-events: none;
+      /* Ensure clicks pass through to button */
     }
 
     .tab-label {
       display: inline-block;
       line-height: 1.1;
+      pointer-events: none;
+      /* Ensure clicks pass through to button */
     }
 
     @media (prefers-color-scheme: dark) {
