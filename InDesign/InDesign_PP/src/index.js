@@ -26,6 +26,20 @@ const {
   getManifestVersion
 } = require("./storage");
 
+const {
+  MIN_DIMENSION,
+  MAX_DIMENSION,
+  TEMPLATES_FILENAME,
+  CALENDAR_PRESETS_FILENAME,
+  LOG_BUFFER_LIMIT,
+  LIVE_PREVIEW_DEBOUNCE_MS,
+  DEFAULT_MASONRY_COLS,
+  DEFAULT_GAP,
+  DEFAULT_PADDING,
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGES
+} = require("./constants");
+
 const { I18N } = require("./i18n");
 const { getDefaultFonts, createFontApi } = require("./fonts");
 
@@ -50,6 +64,19 @@ module.exports = {
   getPluginFolder,
   getPluginDataFolder,
   getManifestVersion,
+  
+  // Constants
+  MIN_DIMENSION,
+  MAX_DIMENSION,
+  TEMPLATES_FILENAME,
+  CALENDAR_PRESETS_FILENAME,
+  LOG_BUFFER_LIMIT,
+  LIVE_PREVIEW_DEBOUNCE_MS,
+  DEFAULT_MASONRY_COLS,
+  DEFAULT_GAP,
+  DEFAULT_PADDING,
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGES,
   
   // Localization
   I18N,

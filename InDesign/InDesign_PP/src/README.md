@@ -7,6 +7,7 @@ This directory contains the modularized source code for the InDesign Page & Fram
 ```
 src/
 ├── index.js                  # Barrel export - centralized module exports
+├── constants.js              # Plugin-wide configuration constants
 ├── features/                 # Feature-specific modules
 │   ├── calendar.js          # Calendar generation and management
 │   ├── layout.js            # Resize and distribution functionality
@@ -24,7 +25,8 @@ src/
 
 ## Module Overview
 
-### Features (`features/` folder)
+### Configuration
+- **constants.js** - Centralized constants (sizes, file names, defaults, language settings)
 
 Each feature module exports a factory function that creates the feature with dependencies:
 
