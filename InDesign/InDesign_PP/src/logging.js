@@ -1,3 +1,15 @@
+/**
+ * Logging Module
+ * Provides centralized logging functionality for the plugin
+ * @module logging
+ */
+
+/**
+ * Creates a logger instance for managing log messages
+ * @param {Object} options - Configuration options
+ * @param {number} options.logLimit - Maximum number of log entries to keep (default: 2000)
+ * @returns {Object} Logger object with append, clear, and formatting methods
+ */
 function createLogger({ logLimit = 2000 } = {}) {
     const logBuffer = [];
     let logAutoScrollEnabled = true;
@@ -7,6 +19,10 @@ function createLogger({ logLimit = 2000 } = {}) {
         return document.getElementById("log-output") || document.querySelector("#log-output");
     }
 
+    /**
+     * Flushes buffered logs to the DOM
+     * @returns {boolean} True if successful, false if log element not found
+     */
     function flushToDom() {
         const logEl = getLogElement();
         if (!logEl) return false;
@@ -31,6 +47,10 @@ function createLogger({ logLimit = 2000 } = {}) {
         return true;
     }
 
+    /**
+     * Appends a message to the log
+     * @param {string} message - Message to log
+     */
     function appendLog(message) {
         const ts = new Date().toLocaleTimeString();
         logBuffer.push(`[${ts}] ${message}`);
@@ -53,6 +73,9 @@ function createLogger({ logLimit = 2000 } = {}) {
         }
     }
 
+    /**
+     * Clears the log buffer and DOM
+     */
     function clearLog() {
         logBuffer.length = 0;
         const logEl = getLogElement();
@@ -60,18 +83,34 @@ function createLogger({ logLimit = 2000 } = {}) {
         logAutoScrollEnabled = true;
     }
 
+    /**
+     * Sets whether logs automatically scroll to bottom
+     * @param {boolean} enabled - Enable/disable auto-scroll
+     */
     function setAutoScrollEnabled(enabled) {
         logAutoScrollEnabled = !!enabled;
     }
 
+    /**
+     * Checks if auto-scroll is enabled
+     * @returns {boolean} Auto-scroll enabled state
+     */
     function isAutoScrollEnabled() {
         return logAutoScrollEnabled;
     }
 
+    /**
+     * Gets the number of log entries in buffer
+     * @returns {number} Number of log entries
+     */
     function getBufferLength() {
         return logBuffer.length;
     }
 
+    /**
+     * Gets the full log text
+     * @returns {string} All log entries joined by newlines
+     */
     function getBufferText() {
         return logBuffer.join("\n");
     }

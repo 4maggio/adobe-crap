@@ -1,3 +1,9 @@
+/**
+ * Internationalization (i18n) Module
+ * Provides German and English translations for the plugin UI
+ * @module i18n
+ */
+
 const I18N = {
     de: {
         "tabs.resize": "Größe",

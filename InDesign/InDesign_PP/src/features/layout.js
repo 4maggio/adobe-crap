@@ -1,3 +1,14 @@
+/**
+ * Layout Feature Module
+ * Provides resize and distribution functionality for InDesign objects
+ * @module features/layout
+ */
+
+/**
+ * Creates the layout feature with resize and distribution utilities
+ * @param {Object} context - Shared context object containing dependencies
+ * @returns {Object} Object with async functions: applyResize, applyDistribute, applyDistributeScale
+ */
 function createLayoutFeature(context) {
     const {
         getActiveDocumentSafe,

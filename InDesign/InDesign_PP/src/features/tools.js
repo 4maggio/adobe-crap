@@ -1,3 +1,14 @@
+/**
+ * Tools Feature Module
+ * Provides utility functions for manipulating frames and content in InDesign
+ * @module features/tools
+ */
+
+/**
+ * Creates the tools feature with frame manipulation utilities
+ * @param {Object} context - Shared context object containing dependencies
+ * @returns {Object} Object with async functions: applyCenterContent, applyFitToFrame, applyFlattenNestedFrames
+ */
 function createToolsFeature(context) {
     const {
         getActiveDocumentSafe,
