@@ -1,3 +1,14 @@
+/**
+ * Utility Functions Module
+ * Provides helper functions for number handling, randomization, and string operations
+ * @module utils
+ */
+
+/**
+ * Rounds a number to maximum 3 decimal places
+ * @param {number} n - The number to round
+ * @returns {number} The rounded number
+ */
 function roundToMax3Decimals(n) {
     if (typeof n !== "number" || isNaN(n)) return n;
     const str = n.toString();
@@ -8,6 +19,11 @@ function roundToMax3Decimals(n) {
     return n;
 }
 
+/**
+ * Parses a localized float input (handles comma as decimal separator)
+ * @param {string|Object} inputValue - Input string or object with value property
+ * @returns {number} Parsed float value
+ */
 function parseLocalizedFloat(inputValue) {
     if (typeof inputValue === 'object' && inputValue.value !== undefined) {
         inputValue = inputValue.value;
@@ -18,6 +34,11 @@ function parseLocalizedFloat(inputValue) {
     return parseFloat(normalized);
 }
 
+/**
+ * XMur3 hash function for generating seeded random numbers
+ * @param {string} str - The string to hash
+ * @returns {Function} Hash function that returns seeded random generator
+ */
 function xmur3(str) {
     let h = 1779033703 ^ str.length;
     for (let i = 0; i < str.length; i++) {
@@ -32,6 +53,11 @@ function xmur3(str) {
     };
 }
 
+/**
+ * Mulberry32 seeded random number generator
+ * @param {number} a - Seed value
+ * @returns {Function} Random number generator function
+ */
 function mulberry32(a) {
     return function () {
         let t = (a += 0x6d2b79f5);
@@ -41,6 +67,12 @@ function mulberry32(a) {
     };
 }
 
+/**
+ * Fisher-Yates shuffle with seeded random for reproducible results
+ * @param {Array} arr - Array to shuffle
+ * @param {string} seedStr - Seed string for reproducible shuffles
+ * @returns {void} Shuffles array in-place
+ */
 function seededShuffle(arr, seedStr) {
     const seedFn = xmur3(String(seedStr || ''));
     const rand = mulberry32(seedFn());

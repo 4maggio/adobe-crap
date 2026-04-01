@@ -1,3 +1,14 @@
+/**
+ * Calendar Feature Module
+ * Provides calendar generation and management utilities
+ * @module features/calendar
+ */
+
+/**
+ * Creates the calendar feature with calendar creation and preset management
+ * @param {Object} context - Shared context object containing dependencies
+ * @returns {Object} Object with async functions for calendar operations
+ */
 function createCalendarFeature(context) {
     const {
         getActiveDocumentSafe,

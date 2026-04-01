@@ -1,4 +1,19 @@
+/**
+ * UI Helpers Module
+ * Provides utilities for UI rendering and localization
+ * @module ui
+ */
+
+/**
+ * Creates UI helper functions for managing UI language and elements
+ * @param {Object} options - Configuration options
+ * @param {Function} options.t - Translation function for i18n lookups
+ * @returns {Object} Object with UI helper functions
+ */
 function createUIHelpers({ t }) {
+    /**
+     * Applies language translations to UI elements based on data-tab attributes
+     */
     function applyLanguageToUI() {
         // Tabs
         const tabMap = {

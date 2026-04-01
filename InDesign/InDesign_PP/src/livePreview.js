@@ -1,3 +1,14 @@
+/**
+ * Live Preview Module
+ * Handles real-time preview of layout changes before applying them
+ * @module livePreview
+ */
+
+/**
+ * Creates a live preview manager for previewing changes
+ * @param {Object} context - Shared context object containing dependencies and preview functions
+ * @returns {Object} Object with live preview initialization and management functions
+ */
 function createLivePreview(context) {
     const {
         getInDesignApp,
@@ -17,6 +28,12 @@ function createLivePreview(context) {
         applyCenterContent
     } = context;
 
+    /**
+     * Debounce function for throttling rapid calls
+     * @param {Function} fn - Function to debounce
+     * @param {number} waitMs - Wait time in milliseconds
+     * @returns {Function} Debounced function
+     */
     function debounce(fn, waitMs) {
         let timer = null;
         return (...args) => {
@@ -28,6 +45,10 @@ function createLivePreview(context) {
         };
     }
 
+    /**
+     * Checks if undo is supported in current InDesign context
+     * @returns {boolean} Undo support available
+     */
     function supportsUndo() {
         const app = getInDesignApp();
         if (!app) return false;
@@ -38,6 +59,10 @@ function createLivePreview(context) {
         }
     }
 
+    /**
+     * Attempts to undo the last action once
+     * @returns {boolean} Undo successful
+     */
     function tryUndoOnce() {
         const app = getInDesignApp();
         if (!app) return false;
@@ -50,6 +75,10 @@ function createLivePreview(context) {
         }
     }
 
+    /**
+     * Checks if there is an active selection
+     * @returns {boolean} Has active selection
+     */
     function hasActiveSelection() {
         const doc = getActiveDocumentSafe();
         try {

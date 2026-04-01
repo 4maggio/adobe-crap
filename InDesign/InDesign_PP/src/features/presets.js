@@ -1,3 +1,14 @@
+/**
+ * Presets Feature Module
+ * Manages layout presets and preset-related UI
+ * @module features/presets
+ */
+
+/**
+ * Creates the presets feature for managing layout presets
+ * @param {Object} context - Shared context object containing dependencies
+ * @returns {Object} Object with functions for preset management
+ */
 function createPresetsFeature(context) {
     const {
         appendLog,

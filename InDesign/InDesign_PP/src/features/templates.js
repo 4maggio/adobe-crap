@@ -1,3 +1,14 @@
+/**
+ * Templates Feature Module
+ * Manages user-defined format templates
+ * @module features/templates
+ */
+
+/**
+ * Creates the templates feature for managing format templates
+ * @param {Object} context - Shared context object containing dependencies
+ * @returns {Object} Object with functions for template management and wiring
+ */
 function createTemplatesFeature(context) {
     const {
         appendLog,
